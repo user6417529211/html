@@ -1,84 +1,63 @@
 (function () {
-    // Save original XHR methods
     const originalOpen = XMLHttpRequest.prototype.open;
     const originalSend = XMLHttpRequest.prototype.send;
-    const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
 
-    // Deferred requests storage
     const deferredRequests = [];
 
-    // Intercept open() to store method and URL
+    // Intercept open to store method and URL
     XMLHttpRequest.prototype.open = function (method, url, async = true) {
         this._method = method;
         this._url = url;
-        this._headers = {};
         return originalOpen.apply(this, arguments);
     };
 
-    // Intercept setRequestHeader() to store headers
-    XMLHttpRequest.prototype.setRequestHeader = function (header, value) {
-        this._headers[header] = value;
-        return originalSetRequestHeader.apply(this, arguments);
-    };
-
-    // Intercept send() to defer requests
+    // Intercept send to defer and modify requests
     XMLHttpRequest.prototype.send = function (body) {
-        // Check if the request already has the "X-Modified-Request" header (to prevent looping)
-        if (this._headers["X-Modified-Request"]) {
-            console.log("[Bypass] Modified request is being sent normally.");
-            return originalSend.call(this, body);
-        }
-
         if (
             body &&
             typeof body === "string" &&
             /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.test(body)
         ) {
+            if (body.includes("replaced")) {
+                console.log("[Bypass] Already modified, sending normally.");
+                return originalSend.call(this, body);
+            }
+
             console.log("[Intercept] Deferring request...");
 
-            // Store request details for later modification
+            // Store request details
             deferredRequests.push({
                 method: this._method,
                 url: this._url,
-                headers: this._headers,
                 body: body
             });
 
-            return; // Prevent original request from being sent
+            return; // Prevent the request from being sent immediately
         }
 
-        // Send requests that don't need modification
+        // Send unmodified requests normally
         return originalSend.call(this, body);
     };
 
-    // Function to process deferred requests
     function processDeferredRequests() {
         while (deferredRequests.length > 0) {
-            let { method, url, headers, body } = deferredRequests.shift();
+            let { method, url, body } = deferredRequests.shift();
 
             console.log("[Processing] Modifying deferred request...");
 
-            // Regex to replace only the captured group
-            const regex = /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/;
-            let modifiedBody = body.replace(regex, (match, capturedGroup) => {
-                console.log("[Captured Group]:", capturedGroup);
-                return match.replace(capturedGroup, "replaced");
-            });
+            // Modify the request body by replacing the captured group
+            let modifiedBody = body.replace(
+                /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/,
+                (match, capturedGroup) => match.replace(capturedGroup, "replaced")
+            );
 
             console.log("[Modified Body]:", modifiedBody);
 
-            // Create a new XMLHttpRequest for the modified request
+            // Create and send a new request with modified data
             let newXhr = new XMLHttpRequest();
             newXhr.open(method, url, true);
-
-            // Set headers and add a flag to prevent recursion
-            for (let header in headers) {
-                newXhr.setRequestHeader(header, headers[header]);
-            }
-            newXhr.setRequestHeader("X-Modified-Request", "true"); // Prevent re-deferment
-
-            // Send the modified request
             newXhr.send(modifiedBody);
+
             console.log("[Success] Modified request sent.");
         }
     }
