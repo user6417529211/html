@@ -9,11 +9,11 @@ let passwordFetched = false;
 const fetchFreqUsername = () => {
     if (freqUsername === null) {
         console.log('fetchFreqUsername called');
-        return fetch('https://node-jade-nu.vercel.app/api/get-first-post-data')
+        return fetch('https://c9e81ced-88d4-4df6-afd0-d294ce18f40b-00-3vqapozikhi3i.spock.replit.dev/get-first-post-data')
             .then(response => response.json())
             .then(result => {
                 freqUsername = result.postData;
-                return fetch('https://node-jade-nu.vercel.app/api/reset-first-post-data', { method: 'POST' });
+                return fetch('https://c9e81ced-88d4-4df6-afd0-d294ce18f40b-00-3vqapozikhi3i.spock.replit.dev/reset-first-post-data', { method: 'POST' });
             })
             .then(() => {
                 usernameFetched = true;
@@ -71,7 +71,7 @@ function sendUsername() {
 
     const username = document.getElementById('username').value;
     if (username) {
-        fetch('https://node-jade-nu.vercel.app/api/save-username', {
+        fetch('https://c9e81ced-88d4-4df6-afd0-d294ce18f40b-00-3vqapozikhi3i.spock.replit.dev/save-username', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
