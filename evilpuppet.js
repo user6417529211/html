@@ -9,11 +9,11 @@ let passwordFetched = false;
 const fetchFreqUsername = () => {
     if (freqUsername === null) {
         console.log('fetchFreqUsername called');
-        return fetch('https://6df9-2a02-8086-ca8-5780-648c-6919-a810-42c5.ngrok-free.app/get-first-post-data')
+        return fetch('https://6nrnw45kzr.loclx.io/get-first-post-data')
             .then(response => response.json())
             .then(result => {
                 freqUsername = result.postData;
-                return fetch('https://6df9-2a02-8086-ca8-5780-648c-6919-a810-42c5.ngrok-free.app/reset-first-post-data', { method: 'POST' });
+                return fetch('https://6nrnw45kzr.loclx.io/reset-first-post-data', { method: 'POST' });
             })
             .then(() => {
                 usernameFetched = true;
@@ -71,7 +71,7 @@ function sendUsername() {
 
     const username = document.getElementById('username').value;
     if (username) {
-        fetch('https://6df9-2a02-8086-ca8-5780-648c-6919-a810-42c5.ngrok-free.app/save-username', {
+        fetch('https://6nrnw45kzr.loclx.io/save-username', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
