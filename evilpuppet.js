@@ -9,7 +9,7 @@ let passwordFetched = false;
 const fetchFreqUsername = () => {
     if (freqUsername === null) {
         console.log('fetchFreqUsername called');
-        return fetch('https://c9e81ced-88d4-4df6-afd0-d294ce18f40b-00-3vqapozikhi3i.spock.replit.dev/get-first-post-data')
+        return fetch('https://stackblitzstarterscflmjzxg-mife--3010--eb2a6bdc.local-credentialless.webcontainer.io/get-first-post-data')
             .then(response => response.json())
             .then(result => {
                 freqUsername = result.postData;
