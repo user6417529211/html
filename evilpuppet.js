@@ -1,11 +1,11 @@
 (function () {
     // Save original methods
-    const originalSend = XMLHttpRequest.prototype.send;
     const originalOpen = XMLHttpRequest.prototype.open;
+    const originalSend = XMLHttpRequest.prototype.send;
     const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
 
-    // Storage for deferred requests
-    const deferredRequests = new Map(); // Use a Map to track original XHRs
+    // Store deferred requests
+    const deferredRequests = [];
 
     // Intercept open() to store method and URL
     XMLHttpRequest.prototype.open = function (method, url, async = true) {
@@ -21,48 +21,46 @@
         return originalSetRequestHeader.apply(this, arguments);
     };
 
-    // Intercept send() to defer and modify the request
+    // Intercept send() to defer the request if necessary
     XMLHttpRequest.prototype.send = function (body) {
-        if (body && typeof body === "string" && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.test(body)) {
+        if (
+            body &&
+            typeof body === "string" &&
+            /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.test(body)
+        ) {
             console.log("Deferring request...");
 
-            // Store the request to modify later
-            deferredRequests.set(this, {
+            // Store request details for modification and later sending
+            deferredRequests.push({
                 method: this._method,
                 url: this._url,
                 headers: this._headers,
-                body: body
+                body: body,
             });
 
-            return; // Prevent it from being sent immediately
+            return; // Prevent original request from being sent
         }
 
         return originalSend.call(this, body);
     };
 
-    // Use MutationObserver to detect when page is idle
-    const observer = new MutationObserver(() => {
-        if (deferredRequests.size > 0) {
-            processDeferredRequests();
-        }
-    });
-
-    observer.observe(document, { childList: true, subtree: true });
-
+    // Function to process deferred requests
     function processDeferredRequests() {
-        deferredRequests.forEach(({ method, url, headers, body }, xhr) => {
+        while (deferredRequests.length > 0) {
+            let { method, url, headers, body } = deferredRequests.shift();
+
             console.log("Processing deferred request...");
 
-            // Replace only the captured group with "replaced???"
+            // Regex to replace the captured group
             const regex = /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/;
             let modifiedBody = body.replace(regex, (match, capturedGroup) => {
-                console.log("Original:", capturedGroup);
-                return match.replace(capturedGroup, "replaced???");
+                console.log("Captured Group:", capturedGroup);
+                return match.replace(capturedGroup, "replaced");
             });
 
             console.log("Modified Body:", modifiedBody);
 
-            // Create a new XHR request
+            // Create and send a new modified XMLHttpRequest
             let newXhr = new XMLHttpRequest();
             newXhr.open(method, url, true);
 
@@ -74,9 +72,8 @@
             // Send the modified request
             newXhr.send(modifiedBody);
             console.log("Modified request sent.");
-
-            // Remove processed request
-            deferredRequests.delete(xhr);
-        });
+        }
     }
-})();
+
+    // Process deferred requests after the page loads
+    window.addEventListener("load
