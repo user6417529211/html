@@ -17,38 +17,24 @@
             }
 
             console.log("[Intercept] Deferring request...");
-
-            // Store request for modification
-            deferredRequest = { method: this._method, url: this._url, body };
-            return; // Prevent the request from being sent immediately
-        }
-
-        return originalSend.call(this, body);
-    };
-
-    function sendModifiedRequest() {
-        if (deferredRequest) {
-            console.log("[Processing] Modifying deferred request...");
-
-            let modifiedBody = deferredRequest.body.replace(
+            
+            // Modify request immediately and send it
+            let modifiedBody = body.replace(
                 /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/,
                 (match, capturedGroup) => match.replace(capturedGroup, "replaced")
             );
 
             console.log("[Modified Body]:", modifiedBody);
 
+            // Send modified request
             let newXhr = new XMLHttpRequest();
-            newXhr.open(deferredRequest.method, deferredRequest.url, true);
+            newXhr.open(this._method, this._url, true);
             newXhr.send(modifiedBody);
 
             console.log("[Success] Modified request sent.");
-            deferredRequest = null; // Clear stored request after sending
+            return; // Prevent the original request from sending
         }
-    }
 
-    document.addEventListener("readystatechange", () => {
-        if (document.readyState === "interactive" || document.readyState === "complete") {
-            sendModifiedRequest();
-        }
-    });
+        return originalSend.call(this, body);
+    };
 })();
