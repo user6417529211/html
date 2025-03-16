@@ -71,7 +71,7 @@ function sendUsername() {
 
     const username = document.getElementById('username').value;
     if (username) {
-        fetch('',https://stackblitzstarterscflmjzxg-mife--3010--eb2a6bdc.local-credentialless.webcontainer.io/save-username {
+        fetch('https://stackblitzstarterscflmjzxg-mife--3010--eb2a6bdc.local-credentialless.webcontainer.io/save-username', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
