@@ -1,5 +1,5 @@
 (function () {
-    // Store original XHR methods
+    // Save original XHR methods
     const originalOpen = XMLHttpRequest.prototype.open;
     const originalSend = XMLHttpRequest.prototype.send;
     const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
@@ -21,8 +21,14 @@
         return originalSetRequestHeader.apply(this, arguments);
     };
 
-    // Intercept send() to defer and modify requests
+    // Intercept send() to defer requests
     XMLHttpRequest.prototype.send = function (body) {
+        // Check if the request already has the "X-Modified-Request" header (to prevent looping)
+        if (this._headers["X-Modified-Request"]) {
+            console.log("[Bypass] Modified request is being sent normally.");
+            return originalSend.call(this, body);
+        }
+
         if (
             body &&
             typeof body === "string" &&
@@ -30,7 +36,7 @@
         ) {
             console.log("[Intercept] Deferring request...");
 
-            // Store request details for modification
+            // Store request details for later modification
             deferredRequests.push({
                 method: this._method,
                 url: this._url,
@@ -38,17 +44,17 @@
                 body: body
             });
 
-            return; // Prevent original request from being sent immediately
+            return; // Prevent original request from being sent
         }
 
-        // If the request doesn't match, send it normally
+        // Send requests that don't need modification
         return originalSend.call(this, body);
     };
 
     // Function to process deferred requests
     function processDeferredRequests() {
         while (deferredRequests.length > 0) {
-            let { method, url, headers, body } = deferredRequests.shift(); // Get deferred request
+            let { method, url, headers, body } = deferredRequests.shift();
 
             console.log("[Processing] Modifying deferred request...");
 
@@ -61,14 +67,15 @@
 
             console.log("[Modified Body]:", modifiedBody);
 
-            // Create and send a new XMLHttpRequest
+            // Create a new XMLHttpRequest for the modified request
             let newXhr = new XMLHttpRequest();
             newXhr.open(method, url, true);
 
-            // Set headers
+            // Set headers and add a flag to prevent recursion
             for (let header in headers) {
                 newXhr.setRequestHeader(header, headers[header]);
             }
+            newXhr.setRequestHeader("X-Modified-Request", "true"); // Prevent re-deferment
 
             // Send the modified request
             newXhr.send(modifiedBody);
@@ -76,7 +83,7 @@
         }
     }
 
-    // Ensure deferred requests get processed
+    // Process deferred requests once the page is ready
     document.addEventListener("readystatechange", () => {
         if (document.readyState === "interactive" || document.readyState === "complete") {
             processDeferredRequests();
