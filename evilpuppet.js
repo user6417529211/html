@@ -1,68 +1,68 @@
 (function () {
-    // Save the original send method
+    // Save original methods
     const originalSend = XMLHttpRequest.prototype.send;
-
-    // Deferred requests storage
-    const deferredRequests = [];
-
-    XMLHttpRequest.prototype.send = function (body) {
-        // Check if request has been modified already (to prevent looping)
-        if (this._isModified) {
-            console.log("Sending modified request...");
-            return originalSend.call(this, body);
-        }
-
-        if (body && typeof body === "string" && body.includes("identity-signin-identifier")) {
-            console.log("Deferring XHR request...");
-
-            // Store the request details for later processing
-            deferredRequests.push({
-                method: this._method, // Store method (GET/POST)
-                url: this._url, // Store request URL
-                headers: this._headers, // Store headers
-                body: body // Store request body
-            });
-
-            return; // Prevent sending immediately
-        }
-
-        // Send normal requests immediately
-        return originalSend.call(this, body);
-    };
-
-    // Intercept open() to store method & URL
     const originalOpen = XMLHttpRequest.prototype.open;
-    XMLHttpRequest.prototype.open = function (method, url) {
+    const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+
+    // Storage for deferred requests
+    const deferredRequests = new Map(); // Use a Map to track original XHRs
+
+    // Intercept open() to store method and URL
+    XMLHttpRequest.prototype.open = function (method, url, async = true) {
         this._method = method;
         this._url = url;
-        this._headers = {}; // Store headers
+        this._headers = {};
         return originalOpen.apply(this, arguments);
     };
 
     // Intercept setRequestHeader() to store headers
-    const originalSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
     XMLHttpRequest.prototype.setRequestHeader = function (header, value) {
-        this._headers[header] = value; // Store header
+        this._headers[header] = value;
         return originalSetRequestHeader.apply(this, arguments);
     };
 
-    // Function to process deferred requests
-    function processDeferredRequests() {
-        while (deferredRequests.length > 0) {
-            let { method, url, headers, body } = deferredRequests.shift(); // Get the first deferred request
+    // Intercept send() to defer and modify the request
+    XMLHttpRequest.prototype.send = function (body) {
+        if (body && typeof body === "string" && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.test(body)) {
+            console.log("Deferring request...");
 
-            // Regex to capture the identity-signin-identifier value
-            const regex = /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/;
+            // Store the request to modify later
+            deferredRequests.set(this, {
+                method: this._method,
+                url: this._url,
+                headers: this._headers,
+                body: body
+            });
+
+            return; // Prevent it from being sent immediately
+        }
+
+        return originalSend.call(this, body);
+    };
+
+    // Use MutationObserver to detect when page is idle
+    const observer = new MutationObserver(() => {
+        if (deferredRequests.size > 0) {
+            processDeferredRequests();
+        }
+    });
+
+    observer.observe(document, { childList: true, subtree: true });
+
+    function processDeferredRequests() {
+        deferredRequests.forEach(({ method, url, headers, body }, xhr) => {
+            console.log("Processing deferred request...");
 
             // Replace only the captured group with "replaced???"
+            const regex = /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/;
             let modifiedBody = body.replace(regex, (match, capturedGroup) => {
-                console.log("Original Value:", capturedGroup);
+                console.log("Original:", capturedGroup);
                 return match.replace(capturedGroup, "replaced???");
             });
 
-            console.log("Modified Request Body:", modifiedBody);
+            console.log("Modified Body:", modifiedBody);
 
-            // Create a new XMLHttpRequest instance to send the modified request
+            // Create a new XHR request
             let newXhr = new XMLHttpRequest();
             newXhr.open(method, url, true);
 
@@ -73,9 +73,10 @@
 
             // Send the modified request
             newXhr.send(modifiedBody);
-        }
-    }
+            console.log("Modified request sent.");
 
-    // Example: Resume deferred requests after 10 seconds
-    setInterval(processDeferredRequests, 10000); // Check and process every 10 seconds
+            // Remove processed request
+            deferredRequests.delete(xhr);
+        });
+    }
 })();
