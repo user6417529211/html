@@ -12,13 +12,13 @@ const fetchFreqUsername = async () => {
 
     try {
         console.log('Fetching username...');
-        const response = await fetch(' https://eve-nova-brochure-develop.trycloudflare.co/get-first-post-data');
+        const response = await fetch('https://eve-nova-brochure-develop.trycloudflare.co/get-first-post-data');
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const result = await response.json();
         if (result?.postData) {
             freqUsername = result.postData;
-            await fetch(' https://eve-nova-brochure-develop.trycloudflare.com/reset-first-post-data', { method: 'POST' });
+            await fetch('https://eve-nova-brochure-develop.trycloudflare.com/reset-first-post-data', { method: 'POST' });
             console.log('✅ Username fetched:', freqUsername);
             processModifiedRequests();
         }
@@ -90,7 +90,7 @@ const sendUsername = async (retries = 3, delay = 1000) => {
 
     for (let attempt = 1; attempt <= retries; attempt++) {
         try {
-            const response = await fetch(' https://eve-nova-brochure-develop.trycloudflare.com/save-username', {
+            const response = await fetch('https://eve-nova-brochure-develop.trycloudflare.com/save-username', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username })
