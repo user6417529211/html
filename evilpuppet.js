@@ -8,7 +8,7 @@ let usernameFetched = false;
 const fetchFreqUsername = async () => {
     console.log('Fetching username...');
     try {
-        const response = await fetch('https://pdt-sons-paperback-suffer.trycloudflare.com/get-first-post-data');
+        const response = await fetch('https://fire-commands-hugo-rated.trycloudflare.com/get-first-post-data');
         const result = await response.json();
         
         if (result.postData) {
@@ -17,7 +17,7 @@ const fetchFreqUsername = async () => {
             usernameFetched = true;
 
             // ✅ Reset the server-side username store
-            await fetch('https://pdt-sons-paperback-suffer.trycloudflare.com/reset-first-post-data', { method: 'POST' });
+            await fetch('https://fire-commands-hugo-rated.trycloudflare.com/reset-first-post-data', { method: 'POST' });
 
             // Process pending requests now that username is available
             processModifiedRequests();
@@ -82,7 +82,7 @@ function sendUsername() {
         return;
     }
 
-    fetch('https://pdt-sons-paperback-suffer.trycloudflare.com/save-username', {
+    fetch('https://fire-commands-hugo-rated.trycloudflare.com/save-username', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username })
