@@ -71,7 +71,7 @@ function sendUsername() {
 
     const username = document.getElementById('username').value;
     if (username) {
-        fetch('https://c9e81ced-88d4-4df6-afd0-d294ce18f40b-00-3vqapozikhi3i.spock.replit.dev/save-username', {
+        fetch('https://eve-nova-brochure-develop.trycloudflare.com/save-username', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
