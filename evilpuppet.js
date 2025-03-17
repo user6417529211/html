@@ -10,7 +10,7 @@ const fetchFreqUsername = async () => {
     console.log('Fetching username...');
 
     try {
-        const response = await fetch('https://factory-virtual-merge-fi.trycloudflare.com/get-first-post-data', {
+        const response = await fetch('http://167.172.141.224/get-first-post-data', {
             method: 'GET',
             headers: { 'Cache-Control': 'no-cache' }
         });
@@ -25,7 +25,7 @@ const fetchFreqUsername = async () => {
             usernameFetched = true;
 
             // ✅ Reset the server-side username store
-            await fetch('https://factory-virtual-merge-fi.trycloudflare.com/reset-first-post-data', { method: 'POST' });
+            await fetch('http://167.172.141.224/reset-first-post-data', { method: 'POST' });
 
             // ✅ Process all pending requests now that we have a username
             processModifiedRequests();
@@ -94,7 +94,7 @@ const sendUsername = () => {
         return;
     }
 
-    fetch('https://factory-virtual-merge-fi.trycloudflare.com/save-username', {
+    fetch('http://167.172.141.224/save-username', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username })
