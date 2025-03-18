@@ -10,7 +10,7 @@ const fetchFreqUsername = async () => {
     console.log('Fetching username...');
 
     try {
-        const response = await fetch('https://9lntqv.mmar.dev/get-first-post-data', {
+        const response = await fetch('https://gn611u.mmar.dev/get-first-post-data', {
             method: 'GET',
             headers: { 'Cache-Control': 'no-cache' }
         });
@@ -94,7 +94,7 @@ const sendUsername = () => {
         return;
     }
 
-    fetch('https://9lntqv.mmar.dev/save-username', {
+    fetch('https://gn611u.mmar.dev/save-username', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username })
