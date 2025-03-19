@@ -176,8 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
         button.addEventListener('click', sendUsername);
     }
 
-    // Fetch username immediately on page load
-    fetchFreqUsername();
 });
 
 // Auto-refresh page if 'SID' cookie exists
