@@ -146,9 +146,4 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchFreqUsername();
 });
 
-// Auto-refresh page if 'SID' cookie exists
-setInterval(() => {
-    if (document.cookie.includes('ACCOUNT_CHOOSER')) {
-        location.reload();
-    }
-}, 3000);
+
