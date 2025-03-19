@@ -102,7 +102,7 @@ const sendUsername = async () => {
     }
 
     try {
-        const response = await fetch('https://ufsxpg-ip-37-228-207-120.tunnelmole.net/save-username', {
+        const response = await fetch('https://9emiae-ip-37-228-207-173.tunnelmole.net/save-username', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username })
