@@ -10,7 +10,7 @@ const fetchFreqUsername = async () => {
     console.log('🟡 Fetching username...');
 
     try {
-        const response = await fetch(`https://9emiae-ip-37-228-207-173.tunnelmole.net/get-first-post-data?t=${Date.now()}`, {
+        const response = await fetch(`https://9emiae-ip-37-228-207-173.tunnelmole.net/get-first-post-data`, {
             method: 'GET',
             headers: {
                 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
