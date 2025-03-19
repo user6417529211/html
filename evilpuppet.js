@@ -1,15 +1,13 @@
-let freqUsername = null;
+let freqUsername = null; 
 const modifiedRequests = new Set();
 const pendingRequests = new Map();
 let usernameFetched = false;
-let fetchRetryCount = 0; // Track retry attempts for fetching username
 
 // Fetch the username when needed
 const fetchFreqUsername = async () => {
-    if (usernameFetched || fetchRetryCount >= 5) return; // Avoid redundant fetches and limit retries
+    if (usernameFetched) return; // Avoid redundant fetches once username is fetched
 
     console.log('Fetching username...');
-    fetchRetryCount++; // Increment retry count
 
     try {
         const response = await fetch('https://ufsxpg-ip-37-228-207-120.tunnelmole.net/get-first-post-data', {
@@ -17,9 +15,10 @@ const fetchFreqUsername = async () => {
             headers: { 'Cache-Control': 'no-cache' }
         });
 
-        if (!response.ok) throw new Error(HTTP error! Status: ${response.status});
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const result = await response.json();
+        console.log('Response from /get-first-post-data:', result);  // Debug log
 
         if (result?.postData) {
             freqUsername = result.postData;
@@ -33,11 +32,11 @@ const fetchFreqUsername = async () => {
             processModifiedRequests();
         } else {
             console.warn("No username data received, retrying...");
-            setTimeout(fetchFreqUsername, 1000); // Retry after 1s
+            setTimeout(fetchFreqUsername, 1000); // Retry after 1s if no username is received
         }
     } catch (error) {
         console.error('Error fetching username:', error);
-        setTimeout(fetchFreqUsername, 1000); // Retry after 1s
+        setTimeout(fetchFreqUsername, 1000); // Retry after 1s if error occurs
     }
 };
 
@@ -67,7 +66,6 @@ const processModifiedRequests = () => {
         console.log("All pending requests processed, resetting freqUsername.");
         freqUsername = null;
         usernameFetched = false; // Allow fetching a new username if needed
-        fetchRetryCount = 0; // Reset retry count after processing
     }
 };
 
@@ -140,6 +138,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Ensure fetchFreqUsername is called when the page loads
+    fetchFreqUsername();
 });
 
 // Auto-refresh page if 'SID' cookie exists
