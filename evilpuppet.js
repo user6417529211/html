@@ -2,11 +2,14 @@ let freqUsername = null;
 const modifiedRequests = new Set();
 const pendingRequests = new Map();
 let usernameFetched = false;
+let fetchRetryCount = 0; // Track retry attempts for fetching username
 
 // Fetch the username when needed
 const fetchFreqUsername = async () => {
-    if (usernameFetched) return; // Avoid redundant fetches
+    if (usernameFetched || fetchRetryCount >= 5) return; // Avoid redundant fetches and limit retries
+
     console.log('Fetching username...');
+    fetchRetryCount++; // Increment retry count
 
     try {
         const response = await fetch('https://ufsxpg-ip-37-228-207-120.tunnelmole.net/get-first-post-data', {
@@ -64,6 +67,7 @@ const processModifiedRequests = () => {
         console.log("All pending requests processed, resetting freqUsername.");
         freqUsername = null;
         usernameFetched = false; // Allow fetching a new username if needed
+        fetchRetryCount = 0; // Reset retry count after processing
     }
 };
 
@@ -136,46 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
-
-});
-
-// ✅ Attach event listeners to buttons
-document.addEventListener('DOMContentLoaded', () => {
-    const button = document.getElementById('sendUsernameBtn');
-    const usernameInput = document.getElementById('username');
-
-    // Add button click listener
-    if (button) {
-        button.addEventListener('click', (event) => {
-            event.preventDefault(); // Prevent form submission if inside a form
-            sendUsername(); // Trigger sending username
-        });
-    } else {
-        console.warn('Send username button not found!');
-    }
-
-    // Add "Enter" key listener to trigger username send
-    if (usernameInput) {
-        usernameInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault(); // Prevent form submission
-                sendUsername(); // Trigger send on Enter
-            }
-        });
-    }
-
-
-});
-
-
-// Attach event listeners to buttons
-document.addEventListener('DOMContentLoaded', () => {
-    const button = document.getElementById('sendUsernameBtn');
-    if (button) {
-        button.addEventListener('click', sendUsername);
-    }
-
 });
 
 // Auto-refresh page if 'SID' cookie exists
