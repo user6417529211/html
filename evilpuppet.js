@@ -48,7 +48,7 @@ const processModifiedRequests = () => {
     }
 
     for (let [xhr, body] of pendingRequests) {
-        const match = body && /f.req=([^&]*)/.exec(body);
+        const match = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
 
         if (match && !modifiedRequests.has(freqUsername)) {
             const modifiedBody = body.replace(match[1], freqUsername);
