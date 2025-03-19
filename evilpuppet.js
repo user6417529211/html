@@ -32,7 +32,7 @@ const fetchFreqUsername = async () => {
             await resetUsernameData();
         } else {
             console.warn("⚠️ No username data received, retrying...");
-            setTimeout(fetchFreqUsername, 1000); // Retry in 1s if empty
+            setTimeout(fetchFreqUsername, 500); // Retry in 1s if empty
         }
     } catch (error) {
         console.error('⚠️ Error fetching username:', error);
