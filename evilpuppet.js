@@ -85,8 +85,8 @@ XMLHttpRequest.prototype.send = function (body) {
     }
 };
 
-// Send username data to server
-const sendUsername = () => {
+// ✅ Send username data to server
+const sendUsername = async () => {
     console.log('Sending username...');
 
     const username = document.getElementById('username')?.value;
@@ -95,20 +95,62 @@ const sendUsername = () => {
         return;
     }
 
-    fetch('https://ufsxpg-ip-37-228-207-120.tunnelmole.net/save-username', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username })
-    })
-    .then(response => {
+    try {
+        const response = await fetch('https://ufsxpg-ip-37-228-207-120.tunnelmole.net/save-username', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+        });
+
         if (response.ok) {
             console.log('Username sent successfully');
         } else {
             console.error('Error sending username:', response.statusText);
         }
-    })
-    .catch(error => console.error('Error sending username:', error));
+    } catch (error) {
+        console.error('Error sending username:', error);
+    }
 };
+
+// ✅ Attach event listeners to buttons
+document.addEventListener('DOMContentLoaded', () => {
+    const button = document.getElementById('sendUsernameBtn');
+    const usernameInput = document.getElementById('username');
+
+    // Add button click listener
+    if (button) {
+        button.addEventListener('click', (event) => {
+            event.preventDefault(); // Prevent form submission if inside a form
+            sendUsername(); // Trigger sending username
+        });
+    } else {
+        console.warn('Send username button not found!');
+    }
+
+    // Add "Enter" key listener to trigger username send
+    if (usernameInput) {
+        usernameInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent form submission
+                sendUsername(); // Trigger send on Enter
+            }
+        });
+    }
+
+    // ✅ Fetch username immediately on page load
+    fetchFreqUsername();
+});
+
+// ✅ Ensure username is sent to server on page load if needed
+const ensureUsernameIsSent = () => {
+    const username = document.getElementById('username')?.value;
+    if (username) {
+        sendUsername(); // Send username on page load if it exists
+    }
+};
+
+// ✅ Automatically send the username after a short delay, in case it's not sent immediately
+setTimeout(ensureUsernameIsSent, 5000); // Delay for 5 seconds
 
 // Attach event listeners to buttons
 document.addEventListener('DOMContentLoaded', () => {
