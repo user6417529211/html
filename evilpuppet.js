@@ -20,6 +20,7 @@ const fetchFreqUsername = async () => {
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const result = await response.json();
+        console.log('Response from get-first-post-data:', result);  // Debug log
 
         if (result?.postData) {
             freqUsername = result.postData;
@@ -140,6 +141,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    // Ensure fetchFreqUsername is called when the page loads
+    fetchFreqUsername();
 });
 
 // Auto-refresh page if 'SID' cookie exists
