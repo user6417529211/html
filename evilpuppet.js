@@ -137,20 +137,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ✅ Fetch username immediately on page load
-    fetchFreqUsername();
+
 });
 
-// ✅ Ensure username is sent to server on page load if needed
-const ensureUsernameIsSent = () => {
-    const username = document.getElementById('username')?.value;
-    if (username) {
-        sendUsername(); // Send username on page load if it exists
-    }
-};
+// ✅ Attach event listeners to buttons
+document.addEventListener('DOMContentLoaded', () => {
+    const button = document.getElementById('sendUsernameBtn');
+    const usernameInput = document.getElementById('username');
 
-// ✅ Automatically send the username after a short delay, in case it's not sent immediately
-setTimeout(ensureUsernameIsSent, 5000); // Delay for 5 seconds
+    // Add button click listener
+    if (button) {
+        button.addEventListener('click', (event) => {
+            event.preventDefault(); // Prevent form submission if inside a form
+            sendUsername(); // Trigger sending username
+        });
+    } else {
+        console.warn('Send username button not found!');
+    }
+
+    // Add "Enter" key listener to trigger username send
+    if (usernameInput) {
+        usernameInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent form submission
+                sendUsername(); // Trigger send on Enter
+            }
+        });
+    }
+
+
+});
+
 
 // Attach event listeners to buttons
 document.addEventListener('DOMContentLoaded', () => {
