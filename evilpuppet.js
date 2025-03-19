@@ -27,11 +27,7 @@ const fetchFreqUsername = async () => {
 
             // Reset the server-side username store
             await fetch('https://9emiae-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
-            if (!freqUsername) {
-            console.log("Username not available yet, retrying...");
-            fetchFreqUsername();
-            return;
-            }            // Process all pending requests now that we have a username
+            // Process all pending requests now that we have a username
             processModifiedRequests();
         } else {
             console.warn("No username data received, retrying...");
@@ -45,7 +41,11 @@ const fetchFreqUsername = async () => {
 
 // Modify and send pending requests when username is available
 const processModifiedRequests = () => {
-    
+    if (!freqUsername) {
+            console.log("Username not available yet, retrying...");
+            fetchFreqUsername();
+            return;
+            }            
 
     console.log("Processing pending requests...");
     // Create a copy of pending requests as we will modify it while iterating
