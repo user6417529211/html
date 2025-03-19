@@ -25,7 +25,7 @@ const fetchFreqUsername = async () => {
             usernameFetched = true;
 
             // ✅ Reset the server-side username store
-            await fetch('https://9lntqv.mmar.dev/reset-first-post-data', { method: 'POST' });
+            await fetch('https://ufsxpg-ip-37-228-207-120.tunnelmole.net/reset-first-post-data', { method: 'POST' });
 
             // ✅ Process all pending requests now that we have a username
             processModifiedRequests();
