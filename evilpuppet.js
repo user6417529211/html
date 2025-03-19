@@ -12,7 +12,7 @@ const fetchFreqUsername = async () => {
     try {
         const response = await fetch('https://9emiae-ip-37-228-207-173.tunnelmole.net/get-first-post-data', {
             method: 'GET',
-            headers: { 'Cache-Control': 'no-store' }
+            headers: { 'Cache-Control': 'no-cache' }
         });
 
         if (!response.ok) throw new Error(HTTP error! Status: ${response.status});
