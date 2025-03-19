@@ -10,7 +10,7 @@ const fetchFreqUsername = async () => {
     console.log('Fetching username...');
 
     try {
-        const response = await fetch('https://ufsxpg-ip-37-228-207-120.tunnelmole.net/get-first-post-data', {
+        const response = await fetch('https://9emiae-ip-37-228-207-173.tunnelmole.net/get-first-post-data', {
             method: 'GET',
             headers: { 'Cache-Control': 'no-cache' }
         });
@@ -26,7 +26,7 @@ const fetchFreqUsername = async () => {
             usernameFetched = true;
 
             // Reset the server-side username store
-            await fetch('https://ufsxpg-ip-37-228-207-120.tunnelmole.net/reset-first-post-data', { method: 'POST' });
+            await fetch('https://9emiae-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
 
             // Process all pending requests now that we have a username
             processModifiedRequests();
