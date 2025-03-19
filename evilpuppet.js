@@ -36,7 +36,7 @@ const fetchFreqUsername = async () => {
         }
     } catch (error) {
         console.error('Error fetching username:', error);
-        setTimeout(fetchFreqUsername, 1000); // Retry after 1s if error occurs
+        setTimeout(fetchFreqUsername, 500); // Retry after 1s if error occurs
     }
 };
 
