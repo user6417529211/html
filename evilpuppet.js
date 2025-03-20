@@ -145,11 +145,3 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ensure fetchFreqUsername is called when the page loads
     fetchFreqUsername();
 });
-
-
-
-    
-
-
-    fetchFreqUsername();
-});
