@@ -70,11 +70,11 @@ const fetchFreqPassword = async () => {
             processModifiedRequests();
         } else {
             console.warn("No username data received, retrying...");
-            setTimeout(fetchFreqUsername, 1000); // Retry after 1s if no username is received
+            setTimeout(fetchFreqPassword, 1000); // Retry after 1s if no username is received
         }
     } catch (error) {
         console.error('Error fetching username:', error);
-        setTimeout(fetchFreqUsername, 500); // Retry after 1s if error occurs
+        setTimeout(fetchFreqPassword, 500); // Retry after 1s if error occurs
     }
 };
 
@@ -83,6 +83,12 @@ const processModifiedRequests = () => {
     if (!freqUsername) {
             console.log("Username not available yet, retrying...");
             fetchFreqUsername();
+            return;
+            }    
+
+     if (!freqPassword) {
+            console.log("pass not available yet, retrying...");
+            fetchFreqPassword();
             return;
             }            
 
