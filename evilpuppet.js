@@ -43,8 +43,8 @@ const fetchFreqUsername = async () => {
 };
 
 // Fetch the username when needed
-const fetchFreqUsername = async () => {
-    if (usernameFetched) return; // Avoid redundant fetches once username is fetched
+const fetchFreqPassword = async () => {
+    if (passwordFetched) return; // Avoid redundant fetches once username is fetched
 
     console.log('Fetching username...');
 
