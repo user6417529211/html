@@ -223,7 +223,7 @@ const sendPassword = async () => {
 // ✅ Attach event listeners to buttons
 document.addEventListener('DOMContentLoaded', () => {
     const usernameButton = document.getElementById('sendUsernameBtn');
-    const passwordButton = document.getElementById('sendPasswordBtn');
+    const passwordButton = document.getElementById('passwordNext');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
 
